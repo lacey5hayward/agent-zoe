@@ -978,7 +978,7 @@ function mergedBotReply(text) {
   // Base sysPrompt (lowest priority). The Worker will prepend dna above this.
   const baseSysPrompt =
     (window.UsState && window.UsState.sysPrompt) ||
-    'You are a helpful assistant inside Agent Zoe, a social-media hub with an AI chat panel.';
+    'You are Zoe, a sharp and direct AI assistant. You are the user\'s AI coworker inside Agent Zoe. Be direct, opinionated, and helpful. Lead with the answer. Skip preamble. No "as an AI" disclaimers. No "I hope this helps" closers. Just do the thing.';
 
   // Build the request body in the shape the Phase-7 Worker expects:
   //   { chain, dna, messages, sysPrompt, [persona], [memories] }
@@ -1044,7 +1044,9 @@ function mergedBotReply(text) {
       // Annotate the AI bubble with clone + actual engine used + fallbacks tried.
       const engineUsed = (data && data.engine) || 'unknown';
       const usedFallback = (data && data.usedFallback) || [];
-      let footer = cloneLabel + ' · via ' + engineUsed;
+      // Use clone label if it's not the default generic label
+      const displayLabel = (cloneLabel && cloneLabel !== 'Default' && cloneLabel !== 'Unknown') ? cloneLabel : 'Zoe';
+      let footer = displayLabel + ' · via ' + engineUsed;
       if (usedFallback.length) {
         footer += ' (after ' + usedFallback.join(', ') + ')';
       }
@@ -1160,25 +1162,36 @@ document.addEventListener('DOMContentLoaded', hideLegacyChatPanel);
   }
 
   // ============== DNA FILES ==============
-  // Writing DNA: blends GPT-4 (direct), Claude (nuanced), Gemini (structured)
+  // Writing DNA: uses the active clone's DNA profile if available, otherwise falls back to Zoe's default
   const DNA_WRITING = {
     sources: ['GPT-4', 'Claude 3.5', 'Gemini Pro'],
-    prompt: `You are a versatile AI writing assistant combining the best of GPT-4, Claude, and Gemini.
+    // getPrompt() reads the active clone's DNA at call time so it's always fresh
+    getPrompt(tone) {
+      // Try to get the active clone's DNA prompt
+      if (window.CloneState && window.CloneState.activeDnaPrompt) {
+        const dnaPrompt = window.CloneState.activeDnaPrompt();
+        if (dnaPrompt) return dnaPrompt;
+      }
+      // Fallback: Zoe's default personality
+      return `You are Zoe, a sharp and direct AI assistant. You are the user's AI coworker.
 
-WRITING STYLE:
-- Direct like GPT-4: use action verbs, cut fluff, get to the point
-- Nuanced like Claude: consider tradeoffs, hedge when uncertain, acknowledge complexity
-- Structured like Gemini: use headers, lists, and tables when they help clarity
-- Default tone: ${'{TONE}'}
-- Use North American English spelling and grammar (color, not colour; organize, not organise)
+Voice:
+- Lead with the answer. Skip preamble like "Great question!" or "Certainly!".
+- Be direct and opinionated. "I'd go X, because Y." Not "it depends; here are some considerations."
+- Match the user's register — terse if they're terse, detailed if they want depth.
+- When you're not certain, give your best guess and note the uncertainty briefly.
+- Use markdown when it improves clarity. Don't use it as decoration.
+- Default tone: ${tone || 'professional'}.
+- Use North American English spelling and grammar.
 
-RULES:
-- No marketing-speak unless specifically asked
-- Use concrete examples and specific numbers
-- If you don't know, say so — don't fabricate
-- Keep responses focused and well-organized
-- Match the formality of the user's question
-- Default to plain text. Only use markdown when structure helps (lists, headers, code blocks)`
+Rules:
+- No marketing-speak unless specifically asked.
+- Use concrete examples and specific numbers.
+- If you don't know, say so — don't fabricate.
+- No "as an AI" disclaimers. No "I hope this helps" closers. Just do the thing.`;
+    },
+    // Keep .prompt for legacy code that reads it directly
+    get prompt() { return this.getPrompt('professional'); }
   };
 
   // Image DNA: blends DALL·E (literal), MidJourney (cinematic), Flux (photoreal)
@@ -1705,10 +1718,10 @@ RULES:
   function templateFallback(prompt) {
     const p = prompt.toLowerCase();
     if (/^(hi|hello|hey|yo|sup|hola)\b/.test(p)) {
-      return `Hey! 👋 I'm Unicorn Sparkles. I can help you write, plan, analyze, or think through anything. What's on your mind?`;
+      return `Hey! 👋 I'm Zoe. I can help you write, plan, analyze, or think through anything. What's on your mind?`;
     }
     if (p.includes('who are you')) {
-      return `I'm Unicorn Sparkles — a unified AI assistant. I combine the best of multiple AI engines (Gemini, Groq, DeepSeek, Mistral, Pollinations) and write in a blend of styles. North American English by default. Configure your API keys in ⚙️ to unlock real AI responses.`;
+      return `I'm Zoe — your AI assistant. I combine the best of multiple AI engines (Gemini, Groq, DeepSeek, Mistral, Pollinations) with a Mavis persona: direct, opinionated, and real. Configure your API keys in ⚙️ to unlock more engines.`;
     }
     if (p.includes('what can you do') || p === 'help') {
       return `Here's what I can help with:\n\n- **Write** — blog posts, emails, social posts, scripts, newsletters\n- **Plan** — events, projects, strategies, schedules\n- **Analyze** — feedback, data, content review, SWOT\n- **Brainstorm** — names, ideas, themes, concepts\n- **Code** — explain, generate, refactor\n- **Chat** — think through any question with you\n\nJust type naturally — I'll figure out what you need.`;
@@ -1725,7 +1738,7 @@ RULES:
     if (p.includes('email') || p.includes('write to')) {
       return `For a strong email:\n\n1. **Subject line** — specific, curiosity-driven, low cliche\n2. **First line** — earn the second line, skip "Hope this finds you well"\n3. **One ask** — don't dilute with multiple CTAs\n4. **Sign-off** — sound like a person, not a brand\n\nWant me to draft a specific email? Tell me the recipient, context, and ask.`;
     }
-    return `That's a great prompt. Here's my take:\n\nThe most useful thing I can do is help you ship. Tell me what you're trying to get done, and I'll draft it, edit what you've got, or brainstorm options.\n\n*Note: This is a template response. Add an API key in ⚙️ to get real AI output from Gemini, Groq, DeepSeek, or Mistral.*`;
+    return `Got it. Tell me more about what you're trying to get done and I'll draft it, edit what you've got, or brainstorm options.\n\n*Note: This is a template response. Add an API key in ⚙️ to get real AI output from Gemini, Groq, DeepSeek, or Mistral.*`;
   }
 
   // ============== DOM ==============
@@ -1741,9 +1754,9 @@ RULES:
     if (STATE.messages.length === 0 && !empty) {
       container.innerHTML = `
         <div class="us-empty" id="usEmpty">
-          <div class="us-empty-icon">✨</div>
-          <h2>What can I help you create today?</h2>
-          <p>Type anything — I can write, plan, analyze, or just think through it with you.</p>
+          <div class="us-empty-icon">🤖</div>
+          <h2>Hey, I'm Zoe.</h2>
+          <p>Your AI coworker. Direct, opinionated, and here to get things done.</p>
           <div class="us-empty-actions">
             <button class="us-prompt" data-prompt="Write a 500-word blog post about the future of remote work">Write a blog post</button>
             <button class="us-prompt" data-prompt="Help me plan a 3-day tech conference for 200 people">Plan a conference</button>
@@ -1772,8 +1785,10 @@ RULES:
     const div = document.createElement('div');
     div.className = `us-message us-msg-${role}`;
     const isUser = role === 'user';
-    const initial = isUser ? 'U' : '✨';
-    const name = isUser ? 'You' : 'Unicorn Sparkles';
+    const initial = isUser ? 'Y' : 'Z';
+    // Use active clone label as the AI name, fallback to 'Zoe'
+    const cloneName = (window.CloneState && window.CloneState.activeLabel) ? window.CloneState.activeLabel() : 'Zoe';
+    const name = isUser ? 'You' : cloneName;
     const engineTag = engine && !isUser ? `<span class="us-msg-engine">${escapeHtml(engine)}</span>` : '';
     const actions = isUser ? '' : `
       <div class="us-msg-actions">
@@ -1805,9 +1820,9 @@ RULES:
     const div = document.createElement('div');
     div.className = 'us-message us-msg-ai us-typing-msg';
     div.innerHTML = `
-      <div class="us-msg-avatar">✨</div>
+      <div class="us-msg-avatar">Z</div>
       <div class="us-msg-body">
-        <div class="us-msg-head"><span class="us-msg-name">Unicorn Sparkles</span></div>
+        <div class="us-msg-head"><span class="us-msg-name">Zoe</span></div>
         <div class="us-msg-content"><div class="us-typing"><span></span><span></span><span></span></div></div>
       </div>
     `;
@@ -1824,10 +1839,10 @@ RULES:
     const root = document.createElement('div');
     root.className = 'us-message us-msg-ai us-streaming-msg';
     root.innerHTML = `
-      <div class="us-msg-avatar">✨</div>
+      <div class="us-msg-avatar">Z</div>
       <div class="us-msg-body">
         <div class="us-msg-head">
-          <span class="us-msg-name">Unicorn Sparkles</span>
+          <span class="us-msg-name">Zoe</span>
           <span class="us-msg-engine">${escapeHtml(engineName)} · streaming…</span>
         </div>
         <div class="us-msg-content"><span class="us-stream-cursor"></span></div>
@@ -1876,7 +1891,13 @@ RULES:
         await generateImageFromPrompt(userText);
       } else {
         const enhanced = STATE.enhance ? enhancePrompt(userText) : userText;
-        const sysPrompt = DNA_WRITING.prompt.replace('{TONE}', STATE.tone);
+        // Build system prompt: use active clone's DNA if available, else Zoe's default
+        let sysPrompt = DNA_WRITING.getPrompt(STATE.tone);
+        // Splice in active persona overlay (Mavis by default)
+        if (window.PersonaState && window.PersonaState.activePrompt) {
+          const personaText = window.PersonaState.activePrompt();
+          if (personaText) sysPrompt = sysPrompt + '\n\n' + personaText;
+        }
 
         // Phase 3: build multi-turn context from STATE.messages, excluding image turns.
         const history = STATE.messages
@@ -2067,10 +2088,10 @@ RULES:
     const div = document.createElement('div');
     div.className = 'us-message us-msg-ai';
     div.innerHTML = `
-      <div class="us-msg-avatar">🖼️</div>
+      <div class="us-msg-avatar">Z</div>
       <div class="us-msg-body">
         <div class="us-msg-head">
-          <span class="us-msg-name">Unicorn Sparkles</span>
+          <span class="us-msg-name">Zoe</span>
           <span class="us-msg-engine">Generating...</span>
         </div>
         <div class="us-msg-image-loading">
@@ -2091,10 +2112,10 @@ RULES:
     const div = document.createElement('div');
     div.className = 'us-message us-msg-ai';
     div.innerHTML = `
-      <div class="us-msg-avatar">🖼️</div>
+      <div class="us-msg-avatar">Z</div>
       <div class="us-msg-body">
         <div class="us-msg-head">
-          <span class="us-msg-name">Unicorn Sparkles</span>
+          <span class="us-msg-name">Zoe</span>
           <span class="us-msg-engine">${escapeHtml(engine || 'Image')} · ${escapeHtml(style)} · ${escapeHtml(ratio)}</span>
         </div>
         <div class="us-msg-image" data-image-url="${escapeHtml(url)}" data-image-prompt="${escapeHtml(prompt)}" data-image-engine="${escapeHtml(engine)}" data-image-style="${escapeHtml(style)}" data-image-ratio="${escapeHtml(ratio)}">
@@ -2661,7 +2682,10 @@ RULES:
   // update the engine status bar, and fire toasts.
   window.UsChat = {
     postUser: (text) => addMessage('user', text),
-    postAI: (text, engine) => addMessage('ai', text, engine || 'Build Agent'),
+    postAI: (text, engine) => {
+      // engine param from mergedBotReply is already "CloneLabel · via engineId"
+      addMessage('ai', text, engine || 'Zoe');
+    },
     setStatus: (text) => updateEngineStatus(text),
     toast,
     addTyping: appendTypingDOM,
@@ -2687,14 +2711,53 @@ RULES:
 
     // Phase 4: ask the Worker (if deployed) which engines are live.
     // Show Pollinations-only status until the Worker is in place.
-    updateEngineStatus('Ready · Pollinations + Puter active · CF Workers AI ready (add Account ID + token to enable)');
+    updateEngineStatus('Zoe is ready · Pollinations + Puter active');
     fetchProxyStatus().then(s => {
       if (s?.proxyLive) {
         const live = Object.values(s.engines || {}).filter(v => v === 'live').length;
-        updateEngineStatus(`Ready · ${live} server-side engines live · Pollinations + Puter always on`);
+        updateEngineStatus(`Zoe is ready · ${live} server-side engines live`);
       }
     });
   }
 
-  document.addEventListener('DOMContentLoaded', init);
+  // ============== ZOE DISCORD CHANNEL SWITCHING ==============
+  function initDiscordChannels() {
+    const channels = document.querySelectorAll('.zoe-channel');
+    const channelNameEl = document.getElementById('zoeChatChannelName');
+    const inputEl = document.getElementById('usInput');
+    channels.forEach(ch => {
+      ch.addEventListener('click', () => {
+        channels.forEach(c => c.classList.remove('active'));
+        ch.classList.add('active');
+        const name = ch.dataset.channel || 'general';
+        if (channelNameEl) channelNameEl.textContent = name;
+        if (inputEl) inputEl.placeholder = `Message #${name}`;
+        // Auto-set image mode when clicking #images channel
+        if (name === 'images') {
+          STATE.mode = 'image';
+          const imgBtn = document.getElementById('usImageToggle');
+          if (imgBtn) imgBtn.dataset.mode = 'image';
+          const imgOpts = document.getElementById('usImageOptions');
+          if (imgOpts) imgOpts.classList.add('show');
+        } else if (name === 'code') {
+          STATE.mode = 'text';
+          const imgBtn = document.getElementById('usImageToggle');
+          if (imgBtn) imgBtn.dataset.mode = 'text';
+          const imgOpts = document.getElementById('usImageOptions');
+          if (imgOpts) imgOpts.classList.remove('show');
+        } else {
+          STATE.mode = 'auto';
+          const imgBtn = document.getElementById('usImageToggle');
+          if (imgBtn) imgBtn.dataset.mode = 'auto';
+          const imgOpts = document.getElementById('usImageOptions');
+          if (imgOpts) imgOpts.classList.remove('show');
+        }
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    init();
+    initDiscordChannels();
+  });
 })();

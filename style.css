@@ -1412,22 +1412,22 @@ a:hover { text-decoration: underline; }
    The chat gets a sensible bounded height so messages and input
    stay in view without hijacking the whole page. */
 .pt-panel[data-panel="chat"] #usApp {
-  height: 620px;
-  max-height: 75vh;
-  min-height: 480px;
+  height: 700px;
+  max-height: 80vh;
+  min-height: 520px;
   margin: 14px 0;
-  border: 1px solid var(--us-border, #2a3040);
-  border-radius: var(--us-radius, 12px);
+  border: 1px solid #1e1f22;
+  border-radius: 8px;
   overflow: hidden;
-  background: var(--us-bg-soft, #f7f8fa);
+  background: #313338;
 }
 
 /* 3b. Override Unicorn's default `.us-app { height: 100vh }`
    when nested inside the Composer card. (We can't remove it from
    Unicorn's CSS without forking; this cascade override is clean.) */
 .pt-panel[data-panel="chat"] #usApp.us-app {
-  height: 620px;
-  max-height: 75vh;
+  height: 700px;
+  max-height: 80vh;
 }
 
 /* 3c. The Composer card itself should not scroll when chat
@@ -2101,3 +2101,596 @@ a:hover { text-decoration: underline; }
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+
+/* ==========================================================================
+   SECTION 5 — ZOE DISCORD-LIKE CHAT INTERFACE
+   ========================================================================== */
+
+/* ── Override us-app to use Discord dark theme ── */
+.us-app {
+  --us-bg: #313338;
+  --us-bg-soft: #2b2d31;
+  --us-bg-elev: #1e1f22;
+  --us-border: #1e1f22;
+  --us-border-strong: #111214;
+  --us-text: #dbdee1;
+  --us-text-dim: #b5bac1;
+  --us-text-muted: #80848e;
+  --us-accent: #5865f2;
+  --us-accent-2: #7289da;
+  --us-accent-soft: rgba(88, 101, 242, 0.15);
+  --us-success: #23a55a;
+  --us-warning: #f0b232;
+  --us-danger: #f23f43;
+  background: var(--us-bg);
+  color: var(--us-text);
+  font-family: 'gg sans', 'Noto Sans', Whitney, 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;
+}
+
+/* ── Topbar (Discord-style) ── */
+.us-app .us-topbar {
+  background: var(--us-bg);
+  border-bottom: 1px solid var(--us-border);
+  height: 48px;
+  padding: 0 16px;
+}
+.us-app .us-brand-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+.us-app .us-btn {
+  background: transparent;
+  border-color: var(--us-border-strong);
+  color: var(--us-text-dim);
+  font-size: 12.5px;
+}
+.us-app .us-btn:hover {
+  background: var(--us-bg-soft);
+  color: var(--us-text);
+}
+.us-app .us-toggle[data-active="true"] {
+  background: var(--us-accent-soft);
+  border-color: var(--us-accent);
+  color: var(--us-accent);
+}
+.us-app .us-select {
+  background: var(--us-bg-soft);
+  border-color: var(--us-border-strong);
+  color: var(--us-text);
+  font-size: 12.5px;
+}
+
+/* ── Layout: sidebar + chat + folder ── */
+.us-app .us-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Discord Channel Sidebar ── */
+.zoe-discord-sidebar {
+  width: 240px;
+  background: var(--us-bg-soft);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-right: 1px solid var(--us-border);
+  overflow: hidden;
+}
+
+.zoe-server-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--us-border);
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.zoe-server-header:hover { background: rgba(255,255,255,0.05); }
+.zoe-server-caret { font-size: 12px; color: var(--us-text-dim); }
+
+.zoe-channel-section {
+  flex: 1;
+  padding: 8px 0;
+  overflow-y: auto;
+}
+
+.zoe-channel-category {
+  padding: 16px 16px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--us-text-muted);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.zoe-channel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 16px;
+  margin: 1px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--us-text-dim);
+  font-size: 15px;
+  transition: all 0.1s;
+}
+.zoe-channel:hover {
+  background: rgba(255,255,255,0.07);
+  color: var(--us-text);
+}
+.zoe-channel.active {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+.zoe-channel-hash {
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--us-text-muted);
+  line-height: 1;
+}
+.zoe-channel.active .zoe-channel-hash { color: var(--us-text-dim); }
+.zoe-channel-name { font-size: 15px; }
+
+.zoe-user-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--us-bg-elev);
+  border-top: 1px solid var(--us-border);
+}
+.zoe-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+.zoe-user-info { flex: 1; min-width: 0; }
+.zoe-user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.zoe-user-status {
+  font-size: 11px;
+  color: var(--us-text-muted);
+}
+
+/* ── Chat Area ── */
+.us-app .us-chat {
+  background: var(--us-bg);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Discord Channel Header ── */
+.zoe-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  height: 48px;
+  border-bottom: 1px solid var(--us-border);
+  background: var(--us-bg);
+  flex-shrink: 0;
+}
+.zoe-chat-hash {
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--us-text-muted);
+  line-height: 1;
+}
+.zoe-chat-channel-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+.zoe-chat-divider {
+  color: var(--us-border-strong);
+  font-size: 18px;
+  margin: 0 4px;
+}
+.zoe-chat-desc {
+  font-size: 13px;
+  color: var(--us-text-muted);
+}
+
+/* ── Messages ── */
+.us-app .us-messages {
+  background: var(--us-bg);
+  padding: 16px 0 8px;
+}
+
+/* ── Discord-style message bubbles ── */
+.us-app .us-message {
+  padding: 2px 16px;
+  max-width: 100%;
+  margin: 0;
+  border-radius: 0;
+  gap: 16px;
+  transition: background 0.05s;
+}
+.us-app .us-message:hover {
+  background: rgba(4, 4, 5, 0.07);
+}
+
+/* Group messages: show avatar only on first in a group */
+.us-app .us-message + .us-message .us-msg-avatar {
+  visibility: hidden;
+}
+.us-app .us-message.us-msg-user + .us-message.us-msg-ai .us-msg-avatar,
+.us-app .us-message.us-msg-ai + .us-message.us-msg-user .us-msg-avatar {
+  visibility: visible;
+}
+
+.us-app .us-msg-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.us-app .us-msg-user .us-msg-avatar {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+}
+.us-app .us-msg-ai .us-msg-avatar {
+  background: linear-gradient(135deg, #5865f2, #7289da);
+}
+
+.us-app .us-msg-head {
+  margin-bottom: 2px;
+}
+.us-app .us-msg-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+.us-app .us-msg-user .us-msg-name {
+  color: #f59e0b;
+}
+.us-app .us-msg-ai .us-msg-name {
+  color: #5865f2;
+}
+.us-app .us-msg-engine {
+  font-size: 11px;
+  color: var(--us-text-muted);
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-left: 6px;
+}
+.us-app .us-msg-content {
+  font-size: 15px;
+  line-height: 1.375;
+  color: var(--us-text);
+}
+.us-app .us-msg-content code {
+  background: rgba(0,0,0,0.3);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 13.5px;
+  color: #e06c75;
+}
+.us-app .us-msg-content pre {
+  background: #1e1f22;
+  border: 1px solid var(--us-border);
+  border-radius: 4px;
+  padding: 12px;
+  overflow-x: auto;
+}
+.us-app .us-msg-content pre code {
+  background: transparent;
+  color: #abb2bf;
+  padding: 0;
+}
+.us-app .us-msg-actions {
+  margin-top: 4px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.us-app .us-message:hover .us-msg-actions {
+  opacity: 1;
+}
+.us-app .us-msg-action {
+  padding: 4px 8px;
+  background: var(--us-bg-soft);
+  border: 1px solid var(--us-border);
+  border-radius: 4px;
+  font-size: 11.5px;
+  color: var(--us-text-dim);
+  transition: all 0.1s;
+}
+.us-app .us-msg-action:hover {
+  background: var(--us-bg-elev);
+  color: var(--us-text);
+  border-color: var(--us-border-strong);
+}
+.us-app .us-msg-action.primary {
+  background: var(--us-accent-soft);
+  border-color: var(--us-accent);
+  color: var(--us-accent);
+}
+
+/* ── Typing indicator ── */
+.us-app .us-typing span {
+  background: var(--us-text-muted);
+}
+
+/* ── Empty state ── */
+.us-app .us-empty {
+  padding: 40px 24px;
+  text-align: center;
+}
+.us-app .us-empty-icon { font-size: 48px; margin-bottom: 16px; }
+.us-app .us-empty h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.us-app .us-empty p {
+  font-size: 15px;
+  color: var(--us-text-dim);
+  margin-bottom: 24px;
+}
+.us-app .us-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.us-app .us-prompt {
+  padding: 8px 14px;
+  background: var(--us-bg-soft);
+  border: 1px solid var(--us-border);
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: var(--us-text-dim);
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.us-app .us-prompt:hover {
+  background: var(--us-accent-soft);
+  border-color: var(--us-accent);
+  color: var(--us-text);
+}
+
+/* ── Input Area ── */
+.us-app .us-input-area {
+  padding: 0 16px 16px;
+  background: var(--us-bg);
+}
+.us-app .us-input-box {
+  background: #383a40;
+  border: none;
+  border-radius: 8px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+.us-app .us-input-box:focus-within {
+  border: none;
+  box-shadow: none;
+}
+.us-app .us-input-box textarea {
+  background: transparent;
+  color: var(--us-text);
+  font-size: 15px;
+  padding: 11px 0;
+  flex: 1;
+  max-height: 200px;
+}
+.us-app .us-input-box textarea::placeholder {
+  color: var(--us-text-muted);
+}
+.us-app .us-send-btn {
+  background: transparent;
+  color: var(--us-text-muted);
+  border-radius: 4px;
+  font-size: 18px;
+  transition: color 0.1s;
+}
+.us-app .us-send-btn:hover {
+  color: var(--us-text);
+  background: transparent;
+  transform: none;
+}
+.us-app .us-send-btn:disabled {
+  background: transparent;
+  color: var(--us-border-strong);
+}
+.us-app .us-engine-status {
+  font-size: 11px;
+  color: var(--us-text-muted);
+  text-align: left;
+  margin: 4px 0 0;
+}
+
+/* ── Image mode toggle ── */
+.us-app .us-mode-toggle {
+  color: var(--us-text-muted);
+  background: transparent;
+  font-size: 18px;
+}
+.us-app .us-mode-toggle:hover {
+  color: var(--us-text);
+  background: transparent;
+}
+.us-app .us-mode-toggle[data-mode="image"] {
+  color: #ec4899;
+  background: transparent;
+}
+
+/* ── Image options ── */
+.us-app .us-image-options {
+  background: #383a40;
+  border: none;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.us-app .us-pill {
+  background: var(--us-bg-soft);
+  border-color: var(--us-border);
+  color: var(--us-text-dim);
+  font-size: 11px;
+}
+.us-app .us-pill:hover {
+  border-color: var(--us-accent);
+  color: var(--us-text);
+}
+.us-app .us-pill.active {
+  background: var(--us-accent);
+  border-color: var(--us-accent);
+  color: white;
+}
+.us-app .us-image-option-group label {
+  color: var(--us-text-muted);
+}
+
+/* ── Output Folder ── */
+.us-app .us-folder {
+  background: var(--us-bg-soft);
+  border-left: 1px solid var(--us-border);
+  width: 280px;
+}
+.us-app .us-folder-head {
+  background: var(--us-bg-soft);
+  border-bottom: 1px solid var(--us-border);
+}
+.us-app .us-folder-head h3 {
+  color: var(--us-text);
+  font-size: 13px;
+}
+.us-app .us-folder-search input {
+  background: var(--us-bg-elev);
+  border-color: var(--us-border);
+  color: var(--us-text);
+}
+.us-app .us-folder-search input::placeholder {
+  color: var(--us-text-muted);
+}
+.us-app .us-folder-tabs {
+  background: var(--us-bg-soft);
+  border-bottom-color: var(--us-border);
+}
+.us-app .us-folder-tab {
+  color: var(--us-text-muted);
+  font-size: 12px;
+}
+.us-app .us-folder-tab:hover { color: var(--us-text); }
+.us-app .us-folder-tab.active {
+  color: var(--us-text);
+  border-bottom-color: var(--us-accent);
+}
+.us-app .us-folder-item {
+  background: var(--us-bg-elev);
+  border-color: var(--us-border);
+}
+.us-app .us-folder-item:hover {
+  background: var(--us-bg);
+  border-color: var(--us-accent);
+}
+.us-app .us-folder-item-title { color: var(--us-text); }
+.us-app .us-folder-item-preview { color: var(--us-text-dim); }
+.us-app .us-folder-item-meta { color: var(--us-text-muted); }
+.us-app .us-folder-empty { color: var(--us-text-muted); }
+
+/* ── Modals ── */
+.us-app .us-modal-content {
+  background: #313338;
+  border: 1px solid var(--us-border);
+}
+.us-app .us-modal-head {
+  border-bottom-color: var(--us-border);
+}
+.us-app .us-modal-head h2 { color: #fff; }
+.us-app .us-modal-body { background: #313338; }
+.us-app .us-modal-foot {
+  border-top-color: var(--us-border);
+  background: #2b2d31;
+}
+.us-app .us-form-group label { color: var(--us-text); }
+.us-app .us-form-group input,
+.us-app .us-form-group select {
+  background: var(--us-bg-elev);
+  border-color: var(--us-border);
+  color: var(--us-text);
+}
+.us-app .us-form-group input:focus,
+.us-app .us-form-group select:focus {
+  border-color: var(--us-accent);
+  background: var(--us-bg-elev);
+}
+.us-app .us-help-text {
+  background: rgba(88,101,242,0.1);
+  color: var(--us-text-dim);
+}
+.us-app .us-btn-primary {
+  background: var(--us-accent);
+  border-color: var(--us-accent);
+  color: white;
+}
+.us-app .us-btn-primary:hover {
+  background: #4752c4;
+}
+
+/* ── Toast ── */
+.us-app .us-toast {
+  background: #111214;
+  color: #fff;
+}
+.us-app .us-toast.success { background: var(--us-success); }
+.us-app .us-toast.error { background: var(--us-danger); }
+
+/* ── Scrollbars (Discord dark) ── */
+.us-app ::-webkit-scrollbar { width: 8px; }
+.us-app ::-webkit-scrollbar-track { background: transparent; }
+.us-app ::-webkit-scrollbar-thumb {
+  background: #1a1b1e;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.us-app ::-webkit-scrollbar-thumb:hover { background: #111214; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .zoe-discord-sidebar { display: none; }
+  .us-app .us-folder { display: none; }
+}
+@media (max-width: 600px) {
+  .us-app .us-topbar-actions .us-select { display: none; }
+}
+
+/* ── Channel switching: update placeholder ── */
+.us-app .us-input-box textarea[data-channel="brainstorm"]::placeholder { content: "Message #brainstorm"; }
+.us-app .us-input-box textarea[data-channel="code"]::placeholder { content: "Message #code"; }
+.us-app .us-input-box textarea[data-channel="images"]::placeholder { content: "Message #images"; }
+
+/* ── Zoe AI avatar uses robot emoji ── */
+.us-app .us-msg-ai .us-msg-avatar::after { content: ''; }

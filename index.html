@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Agent Zoe — Social Hub × Unicorn Sparkles</title>
+  <title>Agent Zoe — AI Chat</title>
 
   <!-- 1. Merged stylesheet (built in Step 3 of GAME_PLAN.md / MERGE_PLAN.md) -->
   <link rel="stylesheet" href="./style.css" />
@@ -29,7 +29,7 @@
         <div class="brand-mark">SH</div>
         <div class="brand-text">
           <div class="brand-name">Agent Zoe</div>
-          <div class="brand-tag">Social Hub × Unicorn Sparkles</div>
+          <div class="brand-tag">Agent Zoe · AI Hub</div>
         </div>
       </div>
       <nav class="nav" id="nav">
@@ -123,7 +123,247 @@
                  input / output folder / modals inside this div. The slot
                  starts empty on first paint and is filled by Unicorn's
                  init() on DOMContentLoaded. -->
-            <div class="us-app" id="usApp"></div>
+            <div class="us-app" id="usApp">
+
+              <!-- ============================================================ -->
+              <!-- DISCORD-LIKE CHAT SHELL                                      -->
+              <!-- ============================================================ -->
+
+              <!-- TOPBAR -->
+              <div class="us-topbar" id="usTopbar">
+                <div class="us-brand">
+                  <span class="us-brand-icon">🤖</span>
+                  <span class="us-brand-name">Zoe</span>
+                </div>
+                <div class="us-topbar-actions">
+                  <button class="us-btn us-btn-ghost us-toggle" id="usEnhanceBtn" data-active="true" title="Prompt Enhancer">⚡ Enhance</button>
+                  <select class="us-select" id="usToneSelect">
+                    <option value="professional">Professional</option>
+                    <option value="casual">Casual</option>
+                    <option value="creative">Creative</option>
+                    <option value="technical">Technical</option>
+                  </select>
+                  <button class="us-btn us-btn-icon" id="usSettingsBtn" title="Settings">⚙️</button>
+                </div>
+              </div>
+
+              <!-- MAIN LAYOUT -->
+              <div class="us-layout">
+
+                <!-- DISCORD CHANNEL SIDEBAR -->
+                <div class="zoe-discord-sidebar">
+                  <div class="zoe-server-header">
+                    <span class="zoe-server-name">Agent Zoe</span>
+                    <span class="zoe-server-caret">▾</span>
+                  </div>
+                  <div class="zoe-channel-section">
+                    <div class="zoe-channel-category">TEXT CHANNELS</div>
+                    <div class="zoe-channel active" data-channel="general">
+                      <span class="zoe-channel-hash">#</span>
+                      <span class="zoe-channel-name">general</span>
+                    </div>
+                    <div class="zoe-channel" data-channel="brainstorm">
+                      <span class="zoe-channel-hash">#</span>
+                      <span class="zoe-channel-name">brainstorm</span>
+                    </div>
+                    <div class="zoe-channel" data-channel="code">
+                      <span class="zoe-channel-hash">#</span>
+                      <span class="zoe-channel-name">code</span>
+                    </div>
+                    <div class="zoe-channel" data-channel="images">
+                      <span class="zoe-channel-hash">#</span>
+                      <span class="zoe-channel-name">images</span>
+                    </div>
+                  </div>
+                  <div class="zoe-user-bar">
+                    <div class="zoe-user-avatar">Y</div>
+                    <div class="zoe-user-info">
+                      <div class="zoe-user-name">You</div>
+                      <div class="zoe-user-status">🟢 Online</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CHAT AREA -->
+                <div class="us-chat">
+
+                  <!-- DISCORD CHANNEL HEADER -->
+                  <div class="zoe-chat-header">
+                    <span class="zoe-chat-hash">#</span>
+                    <span class="zoe-chat-channel-name" id="zoeChatChannelName">general</span>
+                    <span class="zoe-chat-divider">|</span>
+                    <span class="zoe-chat-desc">Chat with Zoe — your AI assistant</span>
+                  </div>
+
+                  <!-- MESSAGES -->
+                  <div class="us-messages" id="usMessages"></div>
+
+                  <!-- IMAGE OPTIONS (hidden by default) -->
+                  <div class="us-image-options" id="usImageOptions">
+                    <div class="us-image-option-group">
+                      <label>Style</label>
+                      <div class="us-pill-row" id="usStylePills">
+                        <button class="us-pill" data-style="photorealistic">Photo</button>
+                        <button class="us-pill active" data-style="cinematic">Cinematic</button>
+                        <button class="us-pill" data-style="illustration">Illustration</button>
+                        <button class="us-pill" data-style="anime">Anime</button>
+                        <button class="us-pill" data-style="3d render">3D</button>
+                        <button class="us-pill" data-style="minimalist">Minimal</button>
+                      </div>
+                    </div>
+                    <div class="us-image-option-group">
+                      <label>Ratio</label>
+                      <div class="us-pill-row" id="usRatioPills">
+                        <button class="us-pill active" data-ratio="1:1">1:1</button>
+                        <button class="us-pill" data-ratio="16:9">16:9</button>
+                        <button class="us-pill" data-ratio="9:16">9:16</button>
+                        <button class="us-pill" data-ratio="4:3">4:3</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- INPUT AREA -->
+                  <div class="us-input-area">
+                    <div class="us-input-box">
+                      <button class="us-mode-toggle" id="usImageToggle" data-mode="auto" title="Toggle image mode">🖼️</button>
+                      <textarea id="usInput" placeholder="Message #general" rows="1"></textarea>
+                      <button class="us-send-btn" id="usSendBtn" title="Send">➤</button>
+                    </div>
+                    <div class="us-engine-status" id="usEngineStatus">Zoe is ready</div>
+                  </div>
+
+                </div><!-- end .us-chat -->
+
+                <!-- OUTPUT FOLDER SIDEBAR -->
+                <div class="us-folder">
+                  <div class="us-folder-head">
+                    <h3>📁 Saved Outputs</h3>
+                    <button class="us-btn us-btn-text" id="usClearFolder">Clear</button>
+                  </div>
+                  <div class="us-folder-search">
+                    <input type="text" id="usFolderSearch" placeholder="Search outputs…" />
+                  </div>
+                  <div class="us-folder-tabs">
+                    <button class="us-folder-tab active" data-filter="all">All</button>
+                    <button class="us-folder-tab" data-filter="text">Text</button>
+                    <button class="us-folder-tab" data-filter="image">Images</button>
+                    <button class="us-folder-tab" data-filter="files">Files</button>
+                  </div>
+                  <div class="us-folder-list" id="usFolderList"></div>
+                </div>
+
+              </div><!-- end .us-layout -->
+
+              <!-- SETTINGS MODAL -->
+              <div class="us-modal" id="usSettingsModal">
+                <div class="us-modal-content">
+                  <div class="us-modal-head">
+                    <h2>⚙️ Settings</h2>
+                    <button class="us-btn us-btn-icon" id="usCloseSettings">✕</button>
+                  </div>
+                  <div class="us-modal-body">
+                    <div class="us-help-text">API keys live as Cloudflare Secrets (server-side). Pollinations + Puter work keyless. Add keys in Cloudflare Pages → Settings → Environment Variables to unlock more engines.</div>
+                    <div class="us-form-group">
+                      <label>Default Engine</label>
+                      <select class="us-select" id="usDefaultEngine" style="width:100%">
+                        <option value="auto">Auto (recommended)</option>
+                        <option value="puter">Puter (GPT-5)</option>
+                        <option value="pollinations">Pollinations (keyless)</option>
+                        <option value="groq">Groq Llama 3.3 70B</option>
+                        <option value="mistral">Mistral</option>
+                        <option value="deepseek">DeepSeek</option>
+                        <option value="gemini">Gemini</option>
+                        <option value="workersai">Cloudflare Workers AI</option>
+                      </select>
+                    </div>
+                    <div class="us-form-group">
+                      <label>Puter Model</label>
+                      <select class="us-select" id="usPuterModel" style="width:100%">
+                        <option value="gpt-5-mini">GPT-5 Mini (default)</option>
+                        <option value="gpt-5">GPT-5</option>
+                        <option value="claude-opus-4.8">Claude Opus 4.8</option>
+                        <option value="gemini-3.5">Gemini 3.5</option>
+                        <option value="grok-4.3">Grok 4.3</option>
+                        <option value="deepseek-chat">DeepSeek Chat</option>
+                      </select>
+                    </div>
+                    <div class="us-form-group">
+                      <label>Workers AI Model</label>
+                      <input type="text" id="usWorkersaiModel" placeholder="@cf/meta/llama-3.2-3b-instruct" />
+                    </div>
+                    <div class="us-form-group">
+                      <label>Cloudflare Account ID</label>
+                      <div class="us-form-row">
+                        <input type="text" id="usCfAccountId" placeholder="Your CF account ID" style="flex:1" />
+                        <button class="us-btn us-btn-sm" id="usTestWorkersai">Test</button>
+                      </div>
+                      <span class="us-status" id="usStatusWorkersai"></span>
+                    </div>
+                    <div class="us-form-group">
+                      <label>Cloudflare API Token</label>
+                      <input type="password" id="usCfToken" placeholder="Workers AI token" />
+                    </div>
+                    <div class="us-form-group">
+                      <label>Server-side Engine Status</label>
+                      <div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px">
+                        <div>Gemini: <span class="us-status" id="usStatusGemini">⏳ checking…</span></div>
+                        <div>Groq: <span class="us-status" id="usStatusGroq">⏳ checking…</span></div>
+                        <div>DeepSeek: <span class="us-status" id="usStatusDeepseek">⏳ checking…</span></div>
+                        <div>Mistral: <span class="us-status" id="usStatusMistral">⏳ checking…</span></div>
+                        <div>HuggingFace: <span class="us-status" id="usStatusHuggingface">⏳ checking…</span></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="us-modal-foot">
+                    <button class="us-btn" id="usRefreshKeys">🔄 Refresh</button>
+                    <button class="us-btn" id="usCancelSettings">Cancel</button>
+                    <button class="us-btn us-btn-primary" id="usSaveSettings">Save</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- IMAGE VIEW MODAL -->
+              <div class="us-modal" id="usImageModal">
+                <div class="us-modal-content us-modal-wide">
+                  <div class="us-modal-head">
+                    <h2 id="usImageTitle">Image</h2>
+                    <button class="us-btn us-btn-icon" id="usCloseImage">✕</button>
+                  </div>
+                  <div class="us-modal-body">
+                    <div class="us-image-view" id="usImageView"></div>
+                    <div class="us-image-view-meta" id="usImageMeta"></div>
+                    <div id="usOutputTitle" style="display:none"></div>
+                    <div id="usOutputContent" style="display:none"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- EDITOR MODAL (Phase 5) -->
+              <div class="us-modal" id="usEditorModal">
+                <div class="us-modal-content us-modal-wide" style="max-width:860px;max-height:90vh">
+                  <div class="us-modal-head">
+                    <h2 id="usEditorPath">Editor</h2>
+                    <button class="us-btn us-btn-icon" id="usEditorClose">✕</button>
+                  </div>
+                  <div class="us-modal-body" style="padding:0;display:flex;flex-direction:column">
+                    <div class="us-editor-preview-meta hidden" id="usEditorPreviewMeta"></div>
+                    <textarea id="usEditorTextarea" style="flex:1;min-height:400px;padding:16px;font-family:monospace;font-size:13px;border:none;resize:none;background:var(--us-bg-soft)"></textarea>
+                  </div>
+                  <div class="us-modal-foot">
+                    <button class="us-btn" id="usEditorReloadBtn" id="usEditorReload" style="display:none">↻ Reload page</button>
+                    <button class="us-btn" id="usEditorApply" style="display:none">✓ Apply</button>
+                    <button class="us-btn" id="usEditorSkip" style="display:none">Skip</button>
+                    <button class="us-btn" id="usEditorRevert">↩ Revert</button>
+                    <button class="us-btn us-btn-primary" id="usEditorSave">💾 Save</button>
+                    <button class="us-btn" id="usEditorCloseFoot">Close</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TOAST -->
+              <div class="us-toast" id="usToast"></div>
+
+            </div><!-- end #usApp -->
 
             <!-- Discord widget iframe embed toggle (kept — useful opt-in
                  for users who have a real Discord server). Click expands
