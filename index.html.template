@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Zoe — Social Hub × Unicorn Sparkles</title>
+
+  <!-- 1. Merged stylesheet (built by Step 3 of MERGE_PLAN.md) -->
+  <link rel="stylesheet" href="./style.css" />
+
+  <!-- 2. Live CSS slot — must come right after the linked stylesheet -->
+  <style id="us-live-css"></style>
+
+  <!-- 3. CDN libs in this exact order -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+</head>
+<body class="sh-body">
+
+  <!-- ================================================================ -->
+  <!-- SOCIAL HUB chrome (from social-hub/index.html, lightly adapted) -->
+  <!-- The four nav tabs stay. Composer → Chat hosts Unicorn's UI. -->
+  <!-- ================================================================ -->
+
+  <header class="brand">
+    <div class="brand-mark">⚡</div>
+    <div class="brand-text">
+      <div class="brand-name">Agent Zoe</div>
+      <div class="brand-tag">Social Hub × Unicorn Sparkles</div>
+    </div>
+    <nav class="nav" id="nav"><!-- social-hub nav anchors --></nav>
+  </header>
+
+  <main>
+    <!-- DASHBOARD, COMPOSER, BLASTER BAY, PAGES views from social-hub stay intact here.
+         For brevity in this template the Composer card is shown in full; the other three
+         cards are placeholder divs. Build the full markup in the resumed merge by copying
+         the matching <section> from social-hub/index.html. -->
+
+    <section id="view-dashboard" class="view hidden">
+      <!-- Paste dashboard markup from original-projects/social-hub/index.html -->
+      <p>Dashboard view — paste full markup from social-hub/index.html § view-dashboard.</p>
+    </section>
+
+    <section id="view-composer" class="view">
+      <div class="composer-card">
+        <!-- Type tabs (Text / Photo / Quote / Link / Chat / Audio / Video) — copy from Social Hub -->
+        <div class="composer-tabs"><!-- seven post-type tabs --></div>
+
+        <!-- Text / Photo / Quote / Link / Audio / Video editors — copy from Social Hub -->
+        <div id="composer-text"     class="composer-pane"></div>
+        <div id="composer-photo"    class="composer-pane"></div>
+        <div id="composer-quote"    class="composer-pane"></div>
+        <div id="composer-link"     class="composer-pane"></div>
+        <div id="composer-audio"    class="composer-pane"></div>
+        <div id="composer-video"    class="composer-pane"></div>
+
+        <!-- CHAT PANE — this is where #usApp mounts -->
+        <div id="composer-chat" class="composer-pane active">
+          <!-- The legacy Social Hub Discord-clone panel is hidden, not removed,
+               because the Discord-widget-iframe embed toggle still uses it. -->
+          <div class="chat-embed-section hidden" id="chat-embed-section">
+            <!-- Discord widget iframe embed: paste from social-hub/index.html -->
+          </div>
+
+          <!-- ★ Unicorn's chat mount root ★ -->
+          <div class="us-app" id="usApp">
+            <!-- Unicorn's app.js renders its own topbar, message list, input row here -->
+          </div>
+        </div>
+
+        <!-- Composer actions row — copy from social-hub/index.html -->
+        <div class="composer-actions">
+          <button id="composer-save">Save</button>
+          <button id="composer-publish">Publish</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-blasterbay" class="view hidden">
+      <!-- Paste blaster-bay markup from social-hub/index.html -->
+      <p>Blaster Bay view — paste full markup from social-hub/index.html § view-blasterbay.</p>
+    </section>
+
+    <section id="view-pages" class="view hidden">
+      <!-- Paste pages markup (squidoo / piczo editors) from social-hub/index.html -->
+      <p>Pages view — paste full markup from social-hub/index.html § view-pages.</p>
+    </section>
+  </main>
+
+  <!-- ================================================================ -->
+  <!-- Unicorn's modals (settings, image, editor) — rendered into #usApp by app.js -->
+  <!-- No markup needed here; app.js owns them. -->
+  <!-- ================================================================ -->
+
+  <!-- ================================================================ -->
+  <!-- Scripts — load order matters -->
+  <!-- ================================================================ -->
+
+  <!-- 1. Merged app.js: Social Hub IIFE first, Unicorn IIFE second.
+       The chat-routing glue (snippets/uschat-glue.js) lives inside this file. -->
+  <script src="./app.js"></script>
+
+  <!-- 2. Unicorn's phase-5 modules -->
+  <script src="./files.js"></script>
+  <script src="./live-css.js"></script>
+  <script src="./live-js.js"></script>
+  <script src="./editor.js"></script>
+  <script src="./build-agent.js"></script>
+
+  <!-- 3. Bootstrap phase-5 widgets (they no-op if their DOM isn't present) -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.UsEditor) UsEditor.bootstrap();
+      if (window.UsBuild)   UsBuild.bootstrap();
+      // NOTE: We intentionally do NOT call UsChat.bootstrap() if it exists.
+      // Social Hub's nav init in app.js wires the composer tab; chat init
+      // happens lazily on first interaction with #usInput.
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Zoe — Social Hub × Unicorn Sparkles</title>
+
+  <!-- 1. Merged stylesheet (built in Step 3 of GAME_PLAN.md / MERGE_PLAN.md) -->
+  <link rel="stylesheet" href="./style.css" />
+
+  <!-- 2. Live-CSS hot-reload slot. MUST come right after the linked stylesheet
+       (Unicorn's MERGE.md §2) so live edits via the in-app editor take cascade
+       precedence over the cached link. -->
+  <style id="us-live-css"></style>
+
+  <!-- 3. CDN libs in this exact order (see shared/CDN_LIBS.md).
+       marked → DOMPurify → JSZip. None depend on each other at runtime. -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+</head>
+<body>
+  <div class="app">
+    <!-- ============================================================ -->
+    <!-- Sidebar nav (Social Hub, kept verbatim)                      -->
+    <!-- ============================================================ -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">SH</div>
+        <div class="brand-text">
+          <div class="brand-name">Agent Zoe</div>
+          <div class="brand-tag">Social Hub × Unicorn Sparkles</div>
+        </div>
+      </div>
+      <nav class="nav" id="nav">
+        <button data-view="dashboard" class="nav-item active">
+          <span class="nav-icon">▦</span> Dashboard
+        </button>
+        <button data-view="composer" class="nav-item">
+          <span class="nav-icon">✎</span> Composer
+        </button>
+        <button data-view="blasterbay" class="nav-item">
+          <span class="nav-icon">⚡</span> Blaster Bay
+        </button>
+        <button data-view="pages" class="nav-item">
+          <span class="nav-icon">▤</span> Pages
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="status-dot"></div>
+        <span>Local · No API keys</span>
+      </div>
+    </aside>
+
+    <!-- ============================================================ -->
+    <!-- Main                                                         -->
+    <!-- ============================================================ -->
+    <main class="main">
+
+      <!-- DASHBOARD -->
+      <section id="view-dashboard" class="view active">
+        <header class="view-header">
+          <h1>Dashboard</h1>
+          <p class="subtitle">Connect accounts and watch the unified feed. Stats live in Blaster Bay.</p>
+        </header>
+        <div class="recent-card">
+          <h2>Connect accounts</h2>
+          <p class="hint hint-block">Wire OAuth for each platform when you have API keys. Buttons stay disabled until then.</p>
+          <div class="connect-grid">
+            <div class="connect-card"><div class="connect-mark">T</div><div class="connect-info"><div class="connect-name">Tumblr-style source</div><div class="connect-state">Not connected</div></div><button class="btn btn-ghost" disabled>Connect</button></div>
+            <div class="connect-card"><div class="connect-mark">X</div><div class="connect-info"><div class="connect-name">X / Twitter</div><div class="connect-state">Not connected</div></div><button class="btn btn-ghost" disabled>Connect</button></div>
+            <div class="connect-card"><div class="connect-mark">I</div><div class="connect-info"><div class="connect-name">Instagram</div><div class="connect-state">Not connected</div></div><button class="btn btn-ghost" disabled>Connect</button></div>
+            <div class="connect-card"><div class="connect-mark">M</div><div class="connect-info"><div class="connect-name">Mastodon</div><div class="connect-state">Not connected</div></div><button class="btn btn-ghost" disabled>Connect</button></div>
+          </div>
+        </div>
+        <div class="recent-card">
+          <h2>Unified feed</h2>
+          <div class="empty-state">Connect an account above. Posts from all linked platforms land here in chronological order.</div>
+        </div>
+      </section>
+
+      <!-- COMPOSER -->
+      <section id="view-composer" class="view">
+        <header class="view-header">
+          <h1>Composer</h1>
+          <p class="subtitle">Seven post types. Pick <em>Chat</em> for the AI chat widget — Discord embed lives underneath.</p>
+        </header>
+        <div class="post-type-tabs" role="tablist">
+          <button class="pt-tab active" data-type="text">Text</button>
+          <button class="pt-tab" data-type="photo">Photo</button>
+          <button class="pt-tab" data-type="quote">Quote</button>
+          <button class="pt-tab" data-type="link">Link</button>
+          <button class="pt-tab" data-type="chat">Chat</button>
+          <button class="pt-tab" data-type="audio">Audio</button>
+          <button class="pt-tab" data-type="video">Video</button>
+        </div>
+        <div class="composer-card">
+          <div class="pt-panel active" data-panel="text">
+            <label class="field"><span class="field-label">Title (optional)</span><input type="text" id="text-title" placeholder="A heading…" /></label>
+            <label class="field"><span class="field-label">Body</span><textarea id="text-body" rows="8" placeholder="Write something…"></textarea></label>
+          </div>
+          <div class="pt-panel" data-panel="photo">
+            <label class="field"><span class="field-label">Image URL</span><input type="text" id="photo-src" placeholder="https://…" /></label>
+            <label class="field"><span class="field-label">Caption (optional)</span><textarea id="photo-caption" rows="3"></textarea></label>
+          </div>
+          <div class="pt-panel" data-panel="quote">
+            <label class="field"><span class="field-label">Quote</span><textarea id="quote-body" rows="4" placeholder="“…”"></textarea></label>
+            <label class="field"><span class="field-label">Source</span><input type="text" id="quote-source" placeholder="Author or URL" /></label>
+          </div>
+          <div class="pt-panel" data-panel="link">
+            <label class="field"><span class="field-label">URL</span><input type="url" id="link-url" placeholder="https://…" /></label>
+            <label class="field"><span class="field-label">Description (optional)</span><textarea id="link-desc" rows="3"></textarea></label>
+          </div>
+
+          <!-- ============================================================ -->
+          <!-- CHAT PANE — Unicorn's chat mounts here                       -->
+          <!-- ============================================================ -->
+          <div class="pt-panel" data-panel="chat">
+            <label class="field"><span class="field-label">Transcript (optional · saves as a chat-style post)</span><textarea id="chat-lines" rows="3" placeholder="Alice: hi&#10;Bob: hey there"></textarea></label>
+
+            <!-- ★ Unicorn's chat mount root ★
+                 Unicorn's app.js renders its own topbar / message list /
+                 input / output folder / modals inside this div. The slot
+                 starts empty on first paint and is filled by Unicorn's
+                 init() on DOMContentLoaded. -->
+            <div class="us-app" id="usApp"></div>
+
+            <!-- Discord widget iframe embed toggle (kept — useful opt-in
+                 for users who have a real Discord server). Click expands
+                 the embed-url input. -->
+            <div class="chat-embed-section">
+              <button type="button" class="embed-toggle-btn" id="chat-embed-toggle-btn" aria-expanded="false">
+                <span class="embed-toggle-icon">◉</span><span class="embed-toggle-label">Embed live Discord chat</span><span class="embed-toggle-hint">widget iframe</span><span class="embed-toggle-arrow" id="chat-embed-arrow">▸</span>
+              </button>
+              <div class="embed-preview" id="discord-embed-preview" hidden>
+                <div class="embed-placeholder">
+                  <div class="embed-icon">◉</div>
+                  <div class="embed-grow"><div class="embed-title">Discord widget slot</div><div class="embed-hint">Paste a Discord widget iframe URL to render a live channel preview.</div><input type="text" id="discord-widget-url" placeholder="https://discord.com/widget?id=YOUR_SERVER_ID&theme=dark" /></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-panel" data-panel="audio">
+            <label class="field"><span class="field-label">Audio URL</span><input type="text" id="audio-src" placeholder="https://…" /></label>
+            <label class="field"><span class="field-label">Caption (optional)</span><input type="text" id="audio-caption" /></label>
+          </div>
+          <div class="pt-panel" data-panel="video">
+            <label class="field"><span class="field-label">Video URL</span><input type="text" id="video-src" placeholder="https://…" /></label>
+            <label class="field"><span class="field-label">Caption (optional)</span><input type="text" id="video-caption" /></label>
+          </div>
+          <div class="composer-actions">
+            <button class="btn btn-ghost" id="composer-save">Save draft</button>
+            <button class="btn btn-primary" id="composer-publish">Publish (stub)</button>
+          </div>
+        </div>
+        <div class="drafts-card">
+          <h2>Drafts &amp; posts</h2>
+          <div id="drafts-list" class="drafts-list"><div class="empty-state">Nothing yet.</div></div>
+        </div>
+      </section>
+
+      <!-- BLASTER BAY -->
+      <section id="view-blasterbay" class="view">
+        <header class="view-header">
+          <h1>Blaster Bay</h1>
+          <p class="subtitle">Your operations dashboard. Stats, activity, and ad campaigns in one place.</p>
+        </header>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-label">Drafts</div><div class="stat-value" id="stat-drafts">0</div></div>
+          <div class="stat-card"><div class="stat-label">Posts</div><div class="stat-value" id="stat-posts">0</div></div>
+          <div class="stat-card"><div class="stat-label">Chat turns</div><div class="stat-value" id="stat-chats">0</div></div>
+          <div class="stat-card"><div class="stat-label">Campaigns</div><div class="stat-value" id="stat-campaigns">0</div></div>
+          <div class="stat-card"><div class="stat-label">Pages</div><div class="stat-value" id="stat-pages">0</div></div>
+        </div>
+        <div class="recent-card">
+          <h2>Recent activity</h2>
+          <div id="activity-feed" class="activity-feed"><div class="empty-state">No activity yet. Try the Composer.</div></div>
+        </div>
+        <div class="recent-card">
+          <div class="bb-head"><h2>Ad campaigns</h2>
+            <div class="bb-actions"><button class="btn btn-primary" id="ad-new">+ New campaign</button><span class="hint">Local prototype — campaigns are stored in your browser only.</span></div>
+          </div>
+          <div class="ad-grid" id="ad-grid"><div class="empty-state ad-empty">No campaigns yet. Create one to see the layout.</div></div>
+        </div>
+      </section>
+
+      <!-- PAGES -->
+      <section id="view-pages" class="view">
+        <!-- List state -->
+        <div class="pages-subview" id="pages-list-view">
+          <header class="view-header">
+            <h1>Pages</h1>
+            <p class="subtitle">Two page modes — each one mimics the look and feel of the original site.</p>
+          </header>
+          <div class="pages-toolbar">
+            <button class="btn btn-primary" id="page-new-squidoo">+ Squidoo Lense</button>
+            <button class="btn btn-primary" id="page-new-piczo">+ Piczo Page</button>
+          </div>
+
+          <div class="pages-descriptions">
+            <div class="pages-desc-card">
+              <div class="pages-desc-icon">📄</div>
+              <div class="pages-desc-body">
+                <div class="pages-desc-name">Squidoo Lense <span class="pages-desc-tag pages-desc-tag-squidoo">stacked blocks</span></div>
+                <div class="pages-desc-text">Mimics the original <strong>Squidoo</strong> lens structure — vertically stacked content blocks with a blog-roll sidebar of related pages. <strong>Best for</strong> articles, blogs, how-to guides, and long-form written content with mixed media.</div>
+              </div>
+            </div>
+            <div class="pages-desc-card">
+              <div class="pages-desc-icon">🎨</div>
+              <div class="pages-desc-body">
+                <div class="pages-desc-name">Piczo Page <span class="pages-desc-tag pages-desc-tag-piczo">free-form canvas</span></div>
+                <div class="pages-desc-text">Mimics the original <strong>Piczo</strong> grab-and-drop editor — place elements anywhere on a blank canvas and resize freely, no grid lines. <strong>Best for</strong> bio link pages, creative layouts, visual portfolios, and hero-style landing pages.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pages-grid" id="pages-grid"><div class="empty-state pages-empty">No pages yet. Pick a mode above to get started.</div></div>
+        </div>
+
+        <!-- Squidoo Lense editor (stacked blocks) -->
+        <div class="pages-subview hidden" id="pages-edit-view">
+          <header class="editor-header">
+            <button class="link-btn" id="page-back">← Back to pages</button>
+            <input type="text" class="editor-title" id="editor-title" placeholder="Untitled Squidoo Lense" />
+            <div class="editor-actions">
+              <label class="theme-picker-label">Theme <select class="theme-picker" id="theme-picker"><option value="minimal">Minimal</option><option value="sunset">Sunset</option><option value="midnight">Midnight</option><option value="forest">Forest</option></select></label>
+              <button class="btn btn-ghost" id="page-preview-btn">Preview</button>
+              <button class="link-btn link-danger" id="page-delete">Delete</button>
+            </div>
+          </header>
+          <div class="editor-context-hint">
+            <span class="editor-context-tag tag-squidoo">Squidoo Lense</span>
+            <span class="editor-context-text">stacked blocks — best for articles, blogs, how-to guides, and structured long-form content.</span>
+          </div>
+          <div class="editor-blocks" id="editor-blocks">
+            <div class="empty-state">No blocks yet. Add one below.
+              <div class="empty-state-hint">Tip: drop in a Related Pages block for the Squidoo-style blog roll sidebar.</div>
+            </div>
+          </div>
+          <div class="block-toolbar">
+            <span class="block-toolbar-label">Add block:</span>
+            <button class="block-add-btn" data-block-type="text">+ Text</button>
+            <button class="block-add-btn" data-block-type="image">+ Image</button>
+            <button class="block-add-btn" data-block-type="quote">+ Quote</button>
+            <button class="block-add-btn" data-block-type="link">+ Link</button>
+            <button class="block-add-btn" data-block-type="video">+ Video</button>
+            <button class="block-add-btn" data-block-type="divider">+ Divider</button>
+            <button class="block-add-btn" data-block-type="related">+ Related Pages</button>
+          </div>
+        </div>
+
+        <!-- Piczo page editor (free-form canvas) -->
+        <div class="pages-subview hidden" id="pages-piczo-view">
+          <header class="editor-header">
+            <button class="link-btn" id="page-back-piczo">← Back to pages</button>
+            <input type="text" class="editor-title" id="editor-piczo-title" placeholder="Untitled Piczo Page" />
+            <div class="editor-actions">
+              <label class="theme-picker-label">Theme <select class="theme-picker" id="theme-picker-piczo"><option value="minimal">Minimal</option><option value="sunset">Sunset</option><option value="midnight">Midnight</option><option value="forest">Forest</option></select></label>
+              <button class="btn btn-ghost" id="page-preview-btn-piczo">Preview</button>
+              <button class="link-btn link-danger" id="page-delete-piczo">Delete</button>
+            </div>
+          </header>
+          <div class="editor-context-hint">
+            <span class="editor-context-tag tag-piczo">Piczo Page</span>
+            <span class="editor-context-text">free-form canvas — best for bio link pages, creative layouts, visual portfolios, and hero-style landing pages.</span>
+          </div>
+          <div class="piczo-workspace">
+            <div class="piczo-canvas" id="piczo-canvas">
+              <div class="piczo-empty-hint">Click a block button below to add your first element. Drag to move, drag the bottom-right corner to resize.
+                <div class="empty-state-hint">Tip: add an Image block + Link blocks to build a quick bio link page.</div>
+              </div>
+            </div>
+            <aside class="piczo-inspector" id="piczo-inspector">
+              <div class="empty-state">Click a block on the canvas to edit its content.</div>
+            </aside>
+          </div>
+          <div class="block-toolbar">
+            <span class="block-toolbar-label">Add to canvas:</span>
+            <button class="block-add-btn" data-piczo-type="text">+ Text</button>
+            <button class="block-add-btn" data-piczo-type="image">+ Image</button>
+            <button class="block-add-btn" data-piczo-type="quote">+ Quote</button>
+            <button class="block-add-btn" data-piczo-type="link">+ Link</button>
+            <button class="block-add-btn" data-piczo-type="video">+ Video</button>
+            <button class="block-add-btn" data-piczo-type="divider">+ Divider</button>
+            <button class="block-add-btn" data-piczo-type="related">+ Related Pages</button>
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="pages-subview hidden" id="pages-preview-view">
+          <header class="preview-header">
+            <button class="link-btn" id="page-back-preview">← Back to editor</button>
+            <span class="preview-label">Preview · <span id="preview-page-title">Untitled</span></span>
+            <span class="hint">This is how the page looks with its current theme.</span>
+          </header>
+          <div class="preview-frame" id="preview-frame"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- Scripts — load order is critical                            -->
+  <!-- ============================================================ -->
+
+  <!-- 0. Phase 15 security key module. MUST load before app.js. -->
+  <script src="./security-key.js"></script>
+
+  <!-- 1. Merged app.js (built in Step 4):
+       SECTION A — Social Hub code (lightly patched: chat routing
+         is delegated to Unicorn via mergedBotReply; initChat /
+         initChatbot guard against missing form elements).
+       SECTION B — Merge glue: mergedBotReply + hideLegacyChatPanel.
+       SECTION C — Unicorn's app.js verbatim (sets window.UsChat,
+         window.UsState; init() runs on DOMContentLoaded). -->
+  <script src="./app.js"></script>
+
+  <!-- 2. Unicorn's phase-5 modules (load order matches Unicorn's
+       own shipped order; see Unicorn's MERGE.md). -->
+  <script src="./files.js"></script>
+  <script src="./live-css.js"></script>
+  <script src="./live-js.js"></script>
+  <script src="./editor.js"></script>
+  <script src="./build-agent.js"></script>
+
+  <!-- 3. Phase 8 clone system. Load order matters: registries first,
+       state next, picker last (picker depends on all of the above). -->
+  <script src="./dna-profiles.js"></script>
+  <script src="./clones.js"></script>
+  <script src="./clone-state.js"></script>
+  <script src="./clone-picker.js"></script>
+
+  <!-- 3b. Phase 11 persona system. Loaded after clone-state so PersonaState
+       can read the active clone's pin; before app.js so the chat glue
+       can call PersonaState.activePrompt() during the first chat submit. -->
+  <script src="./personas.js"></script>
+  <script src="./persona-picker.js"></script>
+
+  <!-- 4. Phase 9 memory module. Loaded before app.js so mergedBotReply
+       can call window.Memory.* during the first chat submit. -->
+  <script src="./memory.js"></script>
+
+  <!-- 5. Phase 10 memory UI. Mounts the FAB + slide-out panel and the
+       per-AI-message save icon. Loaded after memory.js so the UI can
+       call Memory.* when it mounts; before app.js so it's wired by
+       the time Unicorn's IIFE starts rendering messages. -->
+  <script src="./memory-ui.js"></script>
+
+  <!-- 5b. Phase 14 character launcher. Provides a home screen with
+       independent app tiles for each clone. Mounts the FAB and modal
+       after all clones are registered. -->
+  <script src="./character-launcher.js"></script>
+
+  <!-- 6. Bootstrap phase-5 widgets. Both no-op if their DOM isn't
+       present (UsEditor only attaches when #usEditorModal exists;
+       UsBuild only attaches when #usBuildBtn exists). Editor and
+       Build are dormant in v1 per MERGE_PLAN.md §7 — they open via
+       console call (UsEditor.openEditor()) or via the topbar Build
+       button rendered by Unicorn's app.js. -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      try { if (window.UsEditor) window.UsEditor.bootstrap(); } catch (e) { console.warn('[merge] UsEditor bootstrap:', e); }
+      try { if (window.UsBuild)   window.UsBuild.bootstrap(); }   catch (e) { console.warn('[merge] UsBuild bootstrap:', e); }
+      try { if (window.CharacterLauncher) window.CharacterLauncher.init(); } catch (e) { console.warn('[merge] CharacterLauncher init:', e); }
+      // Log which clone is active so the smoke test can verify.
+      try {
+        if (window.CloneState) {
+          const c = window.CloneState.getActive();
+          console.info('[merge] active clone:', c.id, '· engines:', c.engines.join(', '));
+        }
+      } catch (_) { /* noop */ }
+    });
+  </script>
+</body>
+</html>

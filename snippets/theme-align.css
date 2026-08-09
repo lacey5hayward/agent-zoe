@@ -1,0 +1,36 @@
+/* ============================================================
+ * theme-align.css — copy Unicorn's palette into Social Hub tokens
+ * ============================================================
+ *
+ * Drop this into merged/style.css right after the @imports
+ * and the @root token blocks for both products.
+ *
+ * What it does:
+ *   - Keeps both `--us-*` and `--sh-*` token sets.
+ *   - Aligns the *values* so both products share a dark-mode
+ *     aesthetic by default. Users can still override per-product.
+ *
+ * If you don't want the alignment, do not include this file.
+ * The merge works without it; components just look slightly
+ * different across the page.
+ * ============================================================ */
+
+:root {
+  /* Mirror Unicorn's palette into Social Hub's slots. */
+  --sh-bg:           #0d0f14;
+  --sh-bg-soft:      #14171f;
+  --sh-bg-strong:    #1b1f2a;
+  --sh-surface:      #1e2230;
+  --sh-text:         #e7eaf3;
+  --sh-text-dim:     #a8aebb;
+  --sh-text-muted:   #6b7180;
+  --sh-accent:       #ff77c6;   /* Unicorn's hot-pink */
+  --sh-accent-soft:  #ff77c61f;
+  --sh-success:      #5be39a;
+  --sh-danger:       #ff6b6b;
+  --sh-warning:      #ffd166;
+  --sh-border:       #2a3040;
+  --sh-border-strong:#3a4254;
+  --sh-radius:       12px;
+  --sh-radius-sm:    6px;
+}
