@@ -129,6 +129,15 @@
       const fab = createLauncherButton();
       document.body.appendChild(fab);
 
+      // Sync stored character selection into CloneState on mount so both
+      // state stores stay in agreement from the start.
+      try {
+        const storedChar = getActiveCharacter();
+        if (window.CloneState && window.CloneState.setActive) {
+          window.CloneState.setActive(storedChar);
+        }
+      } catch (_) { /* noop */ }
+
       // Populate grid with clones
       const grid = document.getElementById('launcher-grid');
       if (window.CLONES && Array.isArray(window.CLONES)) {

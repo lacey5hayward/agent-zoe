@@ -51,7 +51,7 @@
 
     const picker = document.createElement('select');
     picker.id = 'usPersonaSelect';
-    for (const p of window.PERSONAS) {
+    for (const p of Object.values(window.PERSONAS)) {
       const opt = document.createElement('option');
       opt.value = p.id;
       opt.appendChild(makeTextNode(p.label));

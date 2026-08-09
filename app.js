@@ -1001,6 +1001,25 @@ function mergedBotReply(text) {
   } catch (_) { /* noop */ }
   const personaBlock = personaPrompt ? '\n\n' + personaPrompt : '';
 
+  // Build multi-turn history from Unicorn's STATE.messages so the Worker
+  // receives full conversation context, not just the current turn.
+  // Exclude image turns (no content string) and cap at the last 10 pairs.
+  let conversationHistory = [{ role: 'user', content: text }];
+  try {
+    if (window.UsState && Array.isArray(window.UsState.messages)) {
+      const hist = window.UsState.messages
+        .filter(m => (m.role === 'user' || m.role === 'ai') && typeof m.content === 'string')
+        .slice(-20) // last 20 messages (10 pairs)
+        .map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.content }));
+      // Append the current user turn only if not already the last entry
+      const lastHist = hist[hist.length - 1];
+      if (!lastHist || !(lastHist.role === 'user' && lastHist.content === text)) {
+        hist.push({ role: 'user', content: text });
+      }
+      if (hist.length > 0) conversationHistory = hist;
+    }
+  } catch (_) { /* noop — fall back to single-turn */ }
+
   fetch('/api/proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1008,7 +1027,7 @@ function mergedBotReply(text) {
       chain,
       dna,
       persona: personaPrompt,
-      messages: [{ role: 'user', content: text }],
+      messages: conversationHistory,
       sysPrompt: baseSysPrompt + memoryBlock + personaBlock
     })
   })

@@ -20,13 +20,20 @@
 // Mirror the OPENAI_COMPAT and SPECIAL maps so this file is self-contained
 // for the status response. (Keep in sync with index.js — easier than
 // importing across module boundaries in Workers.)
+
+// Engines that need a secret key (live = key present, missing = key absent)
 const ENGINE_SECRETS = {
   mistral:     'MISTRAL_API_KEY',
   groq:        'GROQ_API_KEY',
   deepseek:    'DEEPSEEK_API_KEY',
   gemini:      'GEMINI_API_KEY',
   huggingface: 'HUGGINGFACE_API_KEY',
+  azure:       'AZURE_OPENAI_API_KEY',
+  oracle:      'ORACLE_API_KEY',
 };
+
+// Engines that are always available (no secret required)
+const KEYLESS_ENGINES = ['pollinations', 'kilo', 'llm7', 'opencode', 'bazaarlink', 'ovh', 'nvidia'];
 
 // The same in-memory memo used by index.js. Workers module scope shares
 // state across requests in the same isolate, so rate-limit info written by
@@ -62,6 +69,7 @@ export async function onRequestGet(context) {
   const memo = readMemoSnapshot();
   const engines = {};
 
+  // Key-backed engines: live if secret is present, missing if not
   for (const [engineId, secretName] of Object.entries(ENGINE_SECRETS)) {
     if (!env[secretName]) {
       engines[engineId] = 'missing';
@@ -72,9 +80,14 @@ export async function onRequestGet(context) {
     }
   }
 
+  // Keyless engines: always live unless currently rate-limited
+  for (const engineId of KEYLESS_ENGINES) {
+    engines[engineId] = memo[engineId] ? 'rate-limited' : 'live';
+  }
+
   return new Response(JSON.stringify({
     proxyLive: true,
-    version: 'phase7-1',
+    version: 'phase7-2',
     engines,
     rateLimited: memo,
     timestamp: Date.now()

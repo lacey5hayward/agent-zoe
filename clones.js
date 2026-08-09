@@ -26,28 +26,28 @@ window.CLONES = [
     label: '🧠 Claude Opus (free clone)',
     description: 'Careful, structured prose. Best for analysis, long-form writing, and reasoning through tradeoffs.',
     dna: 'DNA_CLAUDE_OPUS',
-    engines: ['groq', 'mistral', 'deepseek']
+    engines: ['groq', 'mistral', 'deepseek', 'pollinations', 'kilo', 'llm7', 'nvidia']
   },
   {
     id: 'gpt5-clone',
     label: '🤖 GPT-5 (free clone)',
     description: 'Crisp, friendly, code-ready. Best for everyday tasks and quick answers.',
     dna: 'DNA_GPT4O',
-    engines: ['groq', 'mistral']
+    engines: ['groq', 'mistral', 'pollinations', 'kilo', 'llm7', 'nvidia']
   },
   {
     id: 'reasoning-clone',
     label: '🧮 Reasoning mode',
     description: 'Chain-of-thought, step-by-step. Best for hard problems, debugging, and decisions.',
     dna: 'DNA_REASONING',
-    engines: ['deepseek', 'gemini', 'groq']
+    engines: ['deepseek', 'gemini', 'groq', 'pollinations', 'kilo', 'llm7', 'nvidia']
   },
   {
     id: 'speed-clone',
     label: '⚡ Speed mode',
     description: 'Minimal prompt, fastest path. Best for quick Q&A and short answers.',
     dna: 'DNA_NEUTRAL',
-    engines: ['groq']
+    engines: ['groq', 'pollinations', 'kilo', 'llm7', 'nvidia']
   },
   {
     id: 'polly-clone',
