@@ -1746,27 +1746,19 @@ Rules:
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
   // ============== RENDER MESSAGES ==============
+  // The big "Hey, I'm Zoe" empty state was removed — the prompt chips
+  // now live in the chat bar (#usPromptChips) and show only when
+  // there are no messages. We still keep the data-empty attribute
+  // on the .us-app container so CSS can decide what to show.
   function renderMessages() {
     const container = $('#usMessages');
-    // Remove empty state if there are messages
-    const empty = $('#usEmpty');
-    if (STATE.messages.length > 0 && empty) empty.remove();
-    if (STATE.messages.length === 0 && !empty) {
-      container.innerHTML = `
-        <div class="us-empty" id="usEmpty">
-          <div class="us-empty-icon">🤖</div>
-          <h2>Hey, I'm Zoe.</h2>
-          <p>Your AI coworker. Direct, opinionated, and here to get things done.</p>
-          <div class="us-empty-actions">
-            <button class="us-prompt" data-prompt="Write a 500-word blog post about the future of remote work">Write a blog post</button>
-            <button class="us-prompt" data-prompt="Help me plan a 3-day tech conference for 200 people">Plan a conference</button>
-            <button class="us-prompt" data-prompt="Explain how transformer neural networks work in simple terms">Explain a concept</button>
-            <button class="us-prompt" data-prompt="Write a friendly follow-up email after a sales call">Draft an email</button>
-            <button class="us-prompt" data-prompt="Give me 5 creative names for a new coffee shop">Brainstorm ideas</button>
-          </div>
-        </div>
-      `;
-    }
+    if (!container) return;
+    const usApp = document.querySelector('.us-app');
+    const isEmpty = STATE.messages.length === 0;
+    if (usApp) usApp.setAttribute('data-empty', isEmpty ? 'true' : 'false');
+    // Defensive: if the old empty state sneaks in, drop it
+    const stale = container.querySelector('#usEmpty, .us-empty');
+    if (stale) stale.remove();
   }
 
   function addMessage(role, content, engine = null) {
@@ -2721,31 +2713,108 @@ Rules:
   }
 
   // ============== ZOE FEATURES ==============
-  function initZoeFeatures() {
-    // 1. Channel Switching
-    const channels = document.querySelectorAll('.zoe-channel');
+  // Apply a channel selection to all the relevant UI bits
+  // (sidebar items, topbar pill, dropdown menu, chat header, input placeholder,
+  //  and image mode). Centralized so both the sidebar and the topbar dropdown
+  //  stay in sync.
+  function selectChannel(name) {
+    name = name || 'general';
+    // Sidebar items
+    document.querySelectorAll('.zoe-channel').forEach(c => {
+      c.classList.toggle('active', (c.dataset.channel || '') === name);
+    });
+    // Topbar dropdown menu items
+    document.querySelectorAll('.zoe-menu-item').forEach(c => {
+      c.classList.toggle('active', (c.dataset.channel || '') === name);
+    });
+    // Topbar pill text
+    const pillName = document.getElementById('zoePillName');
+    if (pillName) pillName.textContent = name;
+    // Chat header
     const channelNameEl = document.getElementById('zoeChatChannelName');
+    if (channelNameEl) channelNameEl.textContent = name;
+    // Input placeholder
     const inputEl = document.getElementById('usInput');
+    if (inputEl) inputEl.placeholder = `Message #${name}`;
+    // Image mode behavior
+    if (name === 'images') {
+      STATE.mode = 'image';
+      const imgBtn = document.getElementById('usImageToggle');
+      if (imgBtn) imgBtn.dataset.mode = 'image';
+      const imgOpts = document.getElementById('usImageOptions');
+      if (imgOpts) imgOpts.classList.add('show');
+    } else {
+      STATE.mode = (name === 'code') ? 'text' : 'auto';
+      const imgBtn = document.getElementById('usImageToggle');
+      if (imgBtn) imgBtn.dataset.mode = STATE.mode;
+      const imgOpts = document.getElementById('usImageOptions');
+      if (imgOpts) imgOpts.classList.remove('show');
+    }
+  }
+
+  function initZoeFeatures() {
+    // 1a. Sidebar channel switching (kept in case the sidebar is reopened)
+    const channels = document.querySelectorAll('.zoe-channel');
     channels.forEach(ch => {
-      ch.addEventListener('click', () => {
-        channels.forEach(c => c.classList.remove('active'));
-        ch.classList.add('active');
-        const name = ch.dataset.channel || 'general';
-        if (channelNameEl) channelNameEl.textContent = name;
-        if (inputEl) inputEl.placeholder = `Message #${name}`;
-        if (name === 'images') {
-          STATE.mode = 'image';
-          const imgBtn = document.getElementById('usImageToggle');
-          if (imgBtn) imgBtn.dataset.mode = 'image';
-          const imgOpts = document.getElementById('usImageOptions');
-          if (imgOpts) imgOpts.classList.add('show');
+      ch.addEventListener('click', () => selectChannel(ch.dataset.channel || 'general'));
+    });
+
+    // 1b. Topbar channel dropdown (replaces sidebar navigation by default)
+    const pill = document.getElementById('zoeChannelPill');
+    const menu = document.getElementById('zoeChannelMenu');
+    if (pill && menu) {
+      const toggleMenu = (force) => {
+        const willOpen = (typeof force === 'boolean') ? force : menu.hasAttribute('hidden');
+        if (willOpen) {
+          menu.removeAttribute('hidden');
+          pill.setAttribute('aria-expanded', 'true');
         } else {
-          STATE.mode = (name === 'code') ? 'text' : 'auto';
-          const imgBtn = document.getElementById('usImageToggle');
-          if (imgBtn) imgBtn.dataset.mode = STATE.mode;
-          const imgOpts = document.getElementById('usImageOptions');
-          if (imgOpts) imgOpts.classList.remove('show');
+          menu.setAttribute('hidden', '');
+          pill.setAttribute('aria-expanded', 'false');
         }
+      };
+      pill.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleMenu();
+      });
+      menu.querySelectorAll('.zoe-menu-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectChannel(item.dataset.channel || 'general');
+          toggleMenu(false);
+        });
+      });
+      // Click-away to close
+      document.addEventListener('click', () => toggleMenu(false));
+      // Esc to close
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') toggleMenu(false);
+      });
+    }
+
+    // 1c. Sidebar toggle (☰ in the topbar)
+    const sidebarToggle = document.getElementById('zoeSidebarToggle');
+    const layout = document.getElementById('usLayout');
+    if (sidebarToggle && layout) {
+      sidebarToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const current = layout.getAttribute('data-sidebar') || 'hidden';
+        layout.setAttribute('data-sidebar', current === 'hidden' ? 'visible' : 'hidden');
+      });
+    }
+
+    // 1d. Prompt chips (fused into the chat bar)
+    document.querySelectorAll('.us-prompt-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const text = chip.dataset.prompt || chip.textContent.trim();
+        const input = document.getElementById('usInput');
+        if (input) {
+          input.value = text;
+          input.focus();
+          // Auto-resize textarea if helper exists
+          if (typeof autoResizeTextarea === 'function') autoResizeTextarea(input);
+        }
+        if (typeof sendMessage === 'function') sendMessage();
       });
     });
 

@@ -132,8 +132,31 @@
               <!-- TOPBAR -->
               <div class="us-topbar" id="usTopbar">
                 <div class="us-brand">
+                  <button class="us-btn us-btn-icon" id="zoeSidebarToggle" title="Toggle channel list" aria-label="Toggle channel list">☰</button>
                   <span class="us-brand-icon">🤖</span>
                   <span class="us-brand-name">Zoe</span>
+                  <!-- Channel switcher: replaces the removed sidebar -->
+                  <div class="zoe-channel-switcher">
+                    <button class="zoe-channel-pill" id="zoeChannelPill" type="button" aria-haspopup="listbox" aria-expanded="false">
+                      <span class="zoe-chat-hash">#</span>
+                      <span class="zoe-pill-name" id="zoePillName">general</span>
+                      <span class="zoe-pill-caret">▾</span>
+                    </button>
+                    <ul class="zoe-channel-menu" id="zoeChannelMenu" role="listbox" hidden>
+                      <li role="option" data-channel="general" class="zoe-menu-item active">
+                        <span class="zoe-chat-hash">#</span><span>general</span>
+                      </li>
+                      <li role="option" data-channel="brainstorm" class="zoe-menu-item">
+                        <span class="zoe-chat-hash">#</span><span>brainstorm</span>
+                      </li>
+                      <li role="option" data-channel="code" class="zoe-menu-item">
+                        <span class="zoe-chat-hash">#</span><span>code</span>
+                      </li>
+                      <li role="option" data-channel="images" class="zoe-menu-item">
+                        <span class="zoe-chat-hash">#</span><span>images</span>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
                 <div class="us-topbar-actions">
                   <button class="us-btn us-btn-ghost" id="zoeSavePostBtn" title="Save chat to post">💾 Save Post</button>
@@ -149,10 +172,10 @@
               </div>
 
               <!-- MAIN LAYOUT -->
-              <div class="us-layout">
+              <div class="us-layout" id="usLayout" data-sidebar="hidden">
 
-                <!-- DISCORD CHANNEL SIDEBAR -->
-                <div class="zoe-discord-sidebar">
+                <!-- DISCORD CHANNEL SIDEBAR (hidden by default — toggle via ☰) -->
+                <div class="zoe-discord-sidebar" id="zoeDiscordSidebar">
                   <div class="zoe-server-header">
                     <span class="zoe-server-name">Agent Zoe</span>
                     <span class="zoe-server-caret">▾</span>
@@ -225,6 +248,14 @@
 
                   <!-- INPUT AREA -->
                   <div class="us-input-area">
+                    <!-- Fused prompt chips (replaces the "Hey, I'm Zoe" empty state) -->
+                    <div class="us-prompt-chips" id="usPromptChips" aria-label="Quick prompts">
+                      <button class="us-prompt-chip" data-prompt="Write a 500-word blog post about the future of remote work">✍️ Blog post</button>
+                      <button class="us-prompt-chip" data-prompt="Help me plan a 3-day tech conference for 200 people">📅 Plan event</button>
+                      <button class="us-prompt-chip" data-prompt="Explain how transformer neural networks work in simple terms">💡 Explain</button>
+                      <button class="us-prompt-chip" data-prompt="Write a friendly follow-up email after a sales call">📧 Draft email</button>
+                      <button class="us-prompt-chip" data-prompt="Give me 5 creative names for a new coffee shop">🧠 Brainstorm</button>
+                    </div>
                     <div class="us-input-box">
                       <button class="zoe-upload-btn" id="zoeUploadBtn" title="Upload Media">＋</button>
                       <button class="us-mode-toggle" id="usImageToggle" data-mode="auto" title="Toggle image mode">🖼️</button>

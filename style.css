@@ -2274,6 +2274,182 @@ a:hover { text-decoration: underline; }
   color: var(--us-text-muted);
 }
 
+/* ============================================================
+ * Sidebar collapse — chat spans the full width by default
+ * ============================================================ */
+.us-app .us-layout[data-sidebar="hidden"] .zoe-discord-sidebar {
+  width: 0;
+  min-width: 0;
+  border-right: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  transition: width 0.22s ease, opacity 0.18s ease, border-color 0.18s ease;
+}
+.us-app .us-layout[data-sidebar="visible"] .zoe-discord-sidebar {
+  width: 240px;
+  min-width: 240px;
+  opacity: 1;
+  pointer-events: auto;
+  transition: width 0.22s ease, opacity 0.18s ease;
+}
+.us-app .zoe-discord-sidebar {
+  transition: width 0.22s ease, opacity 0.18s ease, border-color 0.18s ease;
+}
+
+/* ============================================================
+ * Topbar additions — sidebar toggle + channel switcher
+ * ============================================================ */
+.us-app .zoe-sidebar-toggle {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: transparent;
+  border: 0;
+  color: var(--us-text-dim);
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.us-app .zoe-sidebar-toggle:hover { background: var(--us-bg-soft); color: var(--us-text); }
+
+.us-app .us-brand { gap: 10px; }
+.us-app .us-brand .us-btn-icon#zoeSidebarToggle {
+  margin-right: 2px;
+}
+
+/* ── Channel switcher pill ── */
+.zoe-channel-switcher { position: relative; display: inline-flex; }
+.zoe-channel-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 0;
+  color: var(--us-text);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.zoe-channel-pill:hover { background: rgba(255,255,255,0.06); }
+.zoe-channel-pill .zoe-chat-hash {
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--us-text-muted);
+  line-height: 1;
+}
+.zoe-pill-caret { font-size: 10px; color: var(--us-text-muted); margin-left: 2px; }
+
+.zoe-channel-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  min-width: 200px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--us-bg-elev);
+  border: 1px solid var(--us-border-strong);
+  border-radius: 6px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.45);
+}
+.zoe-channel-menu[hidden] { display: none; }
+.zoe-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--us-text-dim);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.zoe-menu-item:hover { background: rgba(255,255,255,0.07); color: var(--us-text); }
+.zoe-menu-item.active { background: rgba(255,255,255,0.1); color: #fff; }
+.zoe-menu-item .zoe-chat-hash { font-size: 18px; font-weight: 300; color: var(--us-text-muted); }
+
+/* ============================================================
+ * Prompt chips — fused empty state, lives inside the chat bar
+ * ============================================================ */
+.us-app .us-prompt-chips {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex-shrink: 0;
+  background: transparent;
+}
+.us-app .us-prompt-chips::-webkit-scrollbar { display: none; }
+.us-app .us-prompt-chip {
+  flex: 0 0 auto;
+  background: var(--us-bg-soft);
+  border: 1px solid var(--us-border);
+  color: var(--us-text-dim);
+  font-size: 12.5px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.us-app .us-prompt-chip:hover {
+  background: var(--us-accent-soft);
+  color: var(--us-text);
+  border-color: var(--us-accent);
+}
+.us-app .us-prompt-chip:active { transform: scale(0.97); }
+/* Hide chips once conversation has started */
+.us-app[data-empty="false"] .us-prompt-chips { display: none; }
+
+/* ============================================================
+ * iPad / iOS Safari scroll fixes
+ * ============================================================
+ * Symptom: finger-scrolling the chat messages is jerky or
+ * doesn't respond. Caused by iOS Safari's interaction between
+ * `overflow: hidden` ancestors, `position: fixed` ancestors,
+ * and the messages container. Force momentum scrolling,
+ * cap overscroll so the page underneath doesn't pull, and
+ * give the container an explicit touch action.
+ */
+.us-app .us-messages {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  will-change: transform;
+}
+.us-app .us-layout,
+.us-app .us-chat {
+  /* No position:fixed ancestors, but be explicit */
+  contain: layout style;
+}
+@media (max-width: 820px) {
+  /* iPad portrait + small tablets: give the chat more room */
+  .pt-panel[data-panel="chat"] #usApp { height: 78vh; min-height: 460px; }
+}
+@media (max-width: 600px) {
+  /* Phones: use almost the full viewport */
+  .pt-panel[data-panel="chat"] #usApp { height: 84vh; min-height: 420px; }
+  .us-app .us-prompt-chip { font-size: 12px; padding: 5px 10px; }
+}
+
+/* ============================================================
+ * Hide "Hey, I'm Zoe" big empty state (no more "nothing yet"
+ * empty block). The prompts are now in the chat bar.
+ * ============================================================ */
+.us-app .us-empty { display: none !important; }
+
 /* ── Chat Area (Full Width) ── */
 .us-app .us-chat {
   background: var(--us-bg);
