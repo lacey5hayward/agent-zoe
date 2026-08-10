@@ -12,11 +12,10 @@ A single deployable static site whose:
 - **UI** is Social Hub's: 4 tabs (Dashboard / Composer / Blaster Bay / Pages)
   with 7 post types, Squidoo Lense stacked-block editor, Piczo Page free-form
   canvas, theme picker, ad campaigns, drafts, activity feed.
-- **Chat engine** is Unicorn Sparkles's: in-browser AI chat inside the
-  Composer → Chat card with **5 engines** (Pollinations keyless, Mistral,
-  Groq, DeepSeek, Gemini, HuggingFace), Puter.js, Cloudflare Workers AI,
-  prompt enhancer, output folder, conversation memory, markdown rendering,
-  image generation.
+- **Chat engine** is Zoe's: A full Discord-like AI chat interface inside the
+  Composer → Chat card. Features a left-hand channel sidebar (#general, #brainstorm, #code, #images), 
+  fused media upload ("＋" button) in the chat bar, and a "Save Post" feature that syncs transcripts 
+  directly to your Text posts. Powered by a fallback chain of 5+ engines.
 - **AI backend** is the Cloudflare Pages Function at `functions/api/proxy/`
   (server-side API keys via encrypted secrets; browser never sees them).
 - **Memory** lives in Cloudflare KV (`agent-zoe-memory` namespace), bound
@@ -44,12 +43,12 @@ and bind the KV namespace. Locally, chat works keyless via Pollinations.
 |---|---|---|
 | 1 | Open `http://localhost:8000/` | ✅ No console errors. Sidebar nav visible. |
 | 2 | Click each nav tab | ✅ All 4 views render. |
-| 3 | Composer → Chat shows Unicorn chat UI | ✅ Topbar (⚡ Enhance / 🛠️ Build / ⚙️), message area, input box. |
-| 4 | Type a message, click Send | ✅ User bubble + AI reply (Pollinations works keyless). |
-| 5 | Open Settings (⚙️) | ✅ Lists engines; "ready" status visible. |
-| 6 | Open Settings → Clone dropdown | ✅ 6 clones available, switch changes engine chain. |
-| 7 | Open Settings → Persona dropdown | ✅ Mavis persona default, can change. |
-| 8 | Output Folder (📁) | ✅ Lists saved outputs. |
+| 3 | Composer → Chat shows Zoe Discord UI | ✅ Left sidebar, #channels, full-width chat area. |
+| 4 | Type a message, click Send | ✅ Discord-style bubbles + AI reply (Zoe identity). |
+| 5 | Click "＋" in chat bar | ✅ File picker opens for media uploads. |
+| 6 | Click "💾 Save Post" in topbar | ✅ Transcript automatically populates the Text Post tab. |
+| 7 | Switch to #images channel | ✅ Auto-switches Zoe to Image Generation mode. |
+| 8 | Open Settings (⚙️) | ✅ Zoe's settings modal opens in Discord dark theme. |
 | 9 | Click 🧠 (memory FAB) | ✅ Slide-out panel opens. |
 | 10 | Save a memory | ✅ Appears in list. Reload page → still there. |
 | 11 | Toggle Recall, send chat | ✅ Top-3 recalled memories prepended to system prompt. |
