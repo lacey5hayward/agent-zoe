@@ -2720,8 +2720,9 @@ Rules:
     });
   }
 
-  // ============== ZOE DISCORD CHANNEL SWITCHING ==============
-  function initDiscordChannels() {
+  // ============== ZOE FEATURES ==============
+  function initZoeFeatures() {
+    // 1. Channel Switching
     const channels = document.querySelectorAll('.zoe-channel');
     const channelNameEl = document.getElementById('zoeChatChannelName');
     const inputEl = document.getElementById('usInput');
@@ -2732,32 +2733,67 @@ Rules:
         const name = ch.dataset.channel || 'general';
         if (channelNameEl) channelNameEl.textContent = name;
         if (inputEl) inputEl.placeholder = `Message #${name}`;
-        // Auto-set image mode when clicking #images channel
         if (name === 'images') {
           STATE.mode = 'image';
           const imgBtn = document.getElementById('usImageToggle');
           if (imgBtn) imgBtn.dataset.mode = 'image';
           const imgOpts = document.getElementById('usImageOptions');
           if (imgOpts) imgOpts.classList.add('show');
-        } else if (name === 'code') {
-          STATE.mode = 'text';
-          const imgBtn = document.getElementById('usImageToggle');
-          if (imgBtn) imgBtn.dataset.mode = 'text';
-          const imgOpts = document.getElementById('usImageOptions');
-          if (imgOpts) imgOpts.classList.remove('show');
         } else {
-          STATE.mode = 'auto';
+          STATE.mode = (name === 'code') ? 'text' : 'auto';
           const imgBtn = document.getElementById('usImageToggle');
-          if (imgBtn) imgBtn.dataset.mode = 'auto';
+          if (imgBtn) imgBtn.dataset.mode = STATE.mode;
           const imgOpts = document.getElementById('usImageOptions');
           if (imgOpts) imgOpts.classList.remove('show');
         }
       });
     });
+
+    // 2. Upload Button
+    const uploadBtn = document.getElementById('zoeUploadBtn');
+    if (uploadBtn) {
+      uploadBtn.addEventListener('click', () => {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*,audio/*,video/*,text/*,.pdf,.doc,.docx';
+        fileInput.onchange = (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            toast(`Uploading ${file.name}...`);
+            // Simulate upload/analysis
+            setTimeout(() => {
+              addMessage('user', `Uploaded file: **${file.name}**`);
+              toast(`File ${file.name} ready for analysis.`, 'success');
+            }, 1000);
+          }
+        };
+        fileInput.click();
+      });
+    }
+
+    // 3. Save to Post (Replacing the white box)
+    const savePostBtn = document.getElementById('zoeSavePostBtn');
+    if (savePostBtn) {
+      savePostBtn.addEventListener('click', () => {
+        if (STATE.messages.length === 0) {
+          toast('Nothing to save yet!', 'error');
+          return;
+        }
+        const transcript = STATE.messages.map(m => `${m.role === 'user' ? 'You' : 'Zoe'}: ${m.content}`).join('\n\n');
+        const postBody = document.getElementById('text-body');
+        // Find the Composer tab for Text
+        const postTab = document.querySelector('.pt-tab[data-type="text"]');
+        if (postBody && postTab) {
+          postBody.value = transcript;
+          postTab.click();
+          toast('Transcript saved to Text Post!', 'success');
+        }
+      });
+    }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     init();
-    initDiscordChannels();
+    initZoeFeatures();
   });
 })();

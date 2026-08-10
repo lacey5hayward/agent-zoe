@@ -90,9 +90,9 @@
           <button class="pt-tab" data-type="photo">Photo</button>
           <button class="pt-tab" data-type="quote">Quote</button>
           <button class="pt-tab" data-type="link">Link</button>
-          <button class="pt-tab" data-type="chat">Chat</button>
           <button class="pt-tab" data-type="audio">Audio</button>
           <button class="pt-tab" data-type="video">Video</button>
+          <button class="pt-tab" data-type="chat">Chat</button>
         </div>
         <div class="composer-card">
           <div class="pt-panel active" data-panel="text">
@@ -116,7 +116,7 @@
           <!-- CHAT PANE — Unicorn's chat mounts here                       -->
           <!-- ============================================================ -->
           <div class="pt-panel" data-panel="chat">
-            <label class="field"><span class="field-label">Transcript (optional · saves as a chat-style post)</span><textarea id="chat-lines" rows="3" placeholder="Alice: hi&#10;Bob: hey there"></textarea></label>
+            <!-- Transcript textarea removed - functionality fused into chat bar -->
 
             <!-- ★ Unicorn's chat mount root ★
                  Unicorn's app.js renders its own topbar / message list /
@@ -136,6 +136,7 @@
                   <span class="us-brand-name">Zoe</span>
                 </div>
                 <div class="us-topbar-actions">
+                  <button class="us-btn us-btn-ghost" id="zoeSavePostBtn" title="Save chat to post">💾 Save Post</button>
                   <button class="us-btn us-btn-ghost us-toggle" id="usEnhanceBtn" data-active="true" title="Prompt Enhancer">⚡ Enhance</button>
                   <select class="us-select" id="usToneSelect">
                     <option value="professional">Professional</option>
@@ -225,6 +226,7 @@
                   <!-- INPUT AREA -->
                   <div class="us-input-area">
                     <div class="us-input-box">
+                      <button class="zoe-upload-btn" id="zoeUploadBtn" title="Upload Media">＋</button>
                       <button class="us-mode-toggle" id="usImageToggle" data-mode="auto" title="Toggle image mode">🖼️</button>
                       <textarea id="usInput" placeholder="Message #general" rows="1"></textarea>
                       <button class="us-send-btn" id="usSendBtn" title="Send">➤</button>
@@ -234,23 +236,7 @@
 
                 </div><!-- end .us-chat -->
 
-                <!-- OUTPUT FOLDER SIDEBAR -->
-                <div class="us-folder">
-                  <div class="us-folder-head">
-                    <h3>📁 Saved Outputs</h3>
-                    <button class="us-btn us-btn-text" id="usClearFolder">Clear</button>
-                  </div>
-                  <div class="us-folder-search">
-                    <input type="text" id="usFolderSearch" placeholder="Search outputs…" />
-                  </div>
-                  <div class="us-folder-tabs">
-                    <button class="us-folder-tab active" data-filter="all">All</button>
-                    <button class="us-folder-tab" data-filter="text">Text</button>
-                    <button class="us-folder-tab" data-filter="image">Images</button>
-                    <button class="us-folder-tab" data-filter="files">Files</button>
-                  </div>
-                  <div class="us-folder-list" id="usFolderList"></div>
-                </div>
+                <!-- OUTPUT FOLDER SIDEBAR REMOVED -->
 
               </div><!-- end .us-layout -->
 

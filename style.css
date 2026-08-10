@@ -2162,11 +2162,12 @@ a:hover { text-decoration: underline; }
   font-size: 12.5px;
 }
 
-/* ── Layout: sidebar + chat + folder ── */
+/* ── Layout: sidebar + chat ── */
 .us-app .us-layout {
   display: flex;
   flex: 1;
   overflow: hidden;
+  width: 100%;
 }
 
 /* ── Discord Channel Sidebar ── */
@@ -2273,13 +2274,14 @@ a:hover { text-decoration: underline; }
   color: var(--us-text-muted);
 }
 
-/* ── Chat Area ── */
+/* ── Chat Area (Full Width) ── */
 .us-app .us-chat {
   background: var(--us-bg);
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  width: 100%;
 }
 
 /* ── Discord Channel Header ── */
@@ -2490,8 +2492,29 @@ a:hover { text-decoration: underline; }
   padding: 0 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   max-width: 100%;
+}
+
+/* ── Zoe Upload Button ── */
+.zoe-upload-btn {
+  width: 24px;
+  height: 24px;
+  background: #b5bac1;
+  color: #313338;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.1s;
+  flex-shrink: 0;
+  border: none;
+}
+.zoe-upload-btn:hover {
+  background: #fff;
+  transform: scale(1.05);
 }
 .us-app .us-input-box:focus-within {
   border: none;
