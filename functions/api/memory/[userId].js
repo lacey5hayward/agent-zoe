@@ -19,10 +19,11 @@
 //     tags: [<string>, ...]   // max 10, each max 50 chars
 //   }
 //
-// Validation: userId must match /^[A-Za-z0-9_-]{1,64}$/.
+// Validation: userId must match /^[A-Za-z0-9_:.-]{1,96}$/.
+// (Phase 13: 'u:' prefix = auth user, 'b:' prefix = browser-fallback.)
 // ============================================================================
 
-const USER_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+const USER_ID_RE = /^[A-Za-z0-9_:.-]{1,96}$/;
 const MAX_CONTENT = 2000;
 const MAX_TAGS = 10;
 const MAX_TAG_LEN = 50;

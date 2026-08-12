@@ -20,6 +20,48 @@
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 </head>
 <body>
+  <!-- ============== LOGIN GATE (Phase 13) ============== -->
+  <!-- Shown only when /api/auth/me returns no user. Sits on top of the app until login. -->
+  <div id="zoe-login-gate" class="zoe-login-gate" hidden>
+    <div class="zoe-login-card">
+      <div class="zoe-login-brand">
+        <div class="zoe-login-mark">Z</div>
+        <h1>Agent Zoe</h1>
+        <p class="zoe-login-tag">Sign in to continue</p>
+      </div>
+      <form id="zoe-login-form" class="zoe-login-form">
+        <label>
+          <span>Username</span>
+          <input type="text" id="zoe-login-username" name="username" autocomplete="username" required />
+        </label>
+        <label>
+          <span>Password</span>
+          <input type="password" id="zoe-login-password" name="password" autocomplete="current-password" required />
+        </label>
+        <button type="submit" class="zoe-login-submit" id="zoe-login-submit">Sign in</button>
+        <div class="zoe-login-error" id="zoe-login-error" hidden></div>
+      </form>
+      <p class="zoe-login-foot">First time? Default credentials are <code>admin</code> / <code>agentzoe</code> — change them in Cloudflare Pages → Settings → Environment Variables.</p>
+    </div>
+  </div>
+
+  <!-- Top-right user menu (shown when logged in) -->
+  <div id="zoe-user-menu" class="zoe-user-menu" hidden>
+    <button class="zoe-user-menu-btn" id="zoe-user-menu-btn" title="Account">
+      <span class="zoe-user-avatar" id="zoe-user-avatar">A</span>
+      <span class="zoe-user-name" id="zoe-user-name">admin</span>
+      <span class="zoe-user-caret">▾</span>
+    </button>
+    <div class="zoe-user-menu-popup" id="zoe-user-menu-popup" hidden>
+      <div class="zoe-user-menu-info">
+        <strong id="zoe-user-popup-name">admin</strong>
+        <span id="zoe-user-popup-role">admin</span>
+      </div>
+      <a class="zoe-user-menu-item" href="/admin" id="zoe-user-menu-admin" hidden>🛡️ Admin panel</a>
+      <button class="zoe-user-menu-item" id="zoe-user-menu-logout">🚪 Sign out</button>
+    </div>
+  </div>
+
   <div class="app">
     <!-- ============================================================ -->
     <!-- Sidebar nav (Social Hub, kept verbatim)                      -->
@@ -280,17 +322,32 @@
                   </div>
                   <div class="us-modal-body">
                     <div class="us-help-text">API keys live as Cloudflare Secrets (server-side). Pollinations + Puter work keyless. Add keys in Cloudflare Pages → Settings → Environment Variables to unlock more engines.</div>
+
+                    <div class="us-form-group us-form-highlight">
+                      <label>🔑 Universal Multimodal Key (OpenRouter)</label>
+                      <div class="us-form-row">
+                        <input type="password" id="usOpenrouterKey" placeholder="sk-or-v1-… (get one free at openrouter.ai)" style="flex:1" autocomplete="off" />
+                        <button class="us-btn us-btn-sm" id="usTestOpenrouter">Test</button>
+                      </div>
+                      <div class="us-form-help">One key unlocks Claude, GPT, Gemini, Llama, vision models — the lot. Free tier has multiple no-cost models; $1 credit on signup.</div>
+                      <div class="us-form-row" style="margin-top:8px">
+                        <input type="text" id="usOpenrouterModel" placeholder="Default model (leave blank to auto-fall-back through free models)" style="flex:1" />
+                      </div>
+                      <span class="us-status" id="usStatusOpenrouter"></span>
+                    </div>
+
                     <div class="us-form-group">
                       <label>Default Engine</label>
                       <select class="us-select" id="usDefaultEngine" style="width:100%">
                         <option value="auto">Auto (recommended)</option>
+                        <option value="pollinations">Pollinations (keyless, day-0)</option>
+                        <option value="openrouter">OpenRouter (universal key)</option>
                         <option value="puter">Puter (GPT-5)</option>
-                        <option value="pollinations">Pollinations (keyless)</option>
+                        <option value="workersai">Cloudflare Workers AI</option>
                         <option value="groq">Groq Llama 3.3 70B</option>
                         <option value="mistral">Mistral</option>
                         <option value="deepseek">DeepSeek</option>
                         <option value="gemini">Gemini</option>
-                        <option value="workersai">Cloudflare Workers AI</option>
                       </select>
                     </div>
                     <div class="us-form-group">
@@ -323,6 +380,7 @@
                     <div class="us-form-group">
                       <label>Server-side Engine Status</label>
                       <div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px">
+                        <div>OpenRouter (browser key): <span class="us-status" id="usStatusOpenrouter">⏳ checking…</span></div>
                         <div>Gemini: <span class="us-status" id="usStatusGemini">⏳ checking…</span></div>
                         <div>Groq: <span class="us-status" id="usStatusGroq">⏳ checking…</span></div>
                         <div>DeepSeek: <span class="us-status" id="usStatusDeepseek">⏳ checking…</span></div>
@@ -608,6 +666,11 @@
        independent app tiles for each clone. Mounts the FAB and modal
        after all clones are registered. -->
   <script src="./character-launcher.js"></script>
+
+  <!-- 5c. Phase 13 auth: gates the app behind a login screen, manages the
+       user menu, routes to /admin. Must come after character-launcher so
+       login is the last gate before the app. -->
+  <script src="./auth.js"></script>
 
   <!-- 6. Bootstrap phase-5 widgets. Both no-op if their DOM isn't
        present (UsEditor only attaches when #usEditorModal exists;

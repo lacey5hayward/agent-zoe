@@ -1,13 +1,17 @@
 /* ============================================================================
  * memory.js — Browser-side memory module
  * ----------------------------------------------------------------------------
- * Stable browser-keyed userId (no sign-in needed). Memories are stored
- * server-side in Cloudflare KV at `user:<userId>`. This module is the
- * only thing in the browser that knows the API shape.
+ * Phase 13: tied to the logged-in user (via window.ZoeAuth.user.id). Memories
+ * are stored server-side in Cloudflare KV at `user:<userId>`. This module is
+ * the only thing in the browser that knows the API shape.
+ *
+ * If no user is logged in, falls back to a stable browser-keyed id so the
+ * feature still works for unauthenticated visitors (they just won't be able
+ * to access memories across devices or after clearing storage).
  *
  * Public surface:
  *   window.Memory = {
- *     userId()                     // stable id, lazily minted + persisted
+ *     userId()                     // stable id (auth user or browser fallback)
  *     list()                       // → GET /api/memory/<userId>
  *     save(content, type, tags?)   // → POST. Returns the saved memory.
  *     remove(memoryId)             // → DELETE
@@ -17,7 +21,7 @@
  *   }
  *
  * Storage layout in localStorage:
- *   us-mem-user-id        — the stable per-browser user id (16 hex chars)
+ *   us-mem-user-id        — fallback per-browser id (16 hex chars) if no auth
  *   us-mem-autosave-cnt   — auto-save throttle counter
  *   us-mem-recall-cache   — last recall result (so the chat can read it
  *                            without re-fetching every turn)
@@ -30,8 +34,9 @@
   const AUTOSAVE_MAX_PER_SESSION = 20; // hard cap
 
   // ── userId management ───────────────────────────────────────────────────
+  // Phase 13: prefer the authenticated user's id (cross-device, persistent).
+  // Fall back to a browser-local id only if the user isn't logged in.
   function mintUserId() {
-    // 16 hex chars = 64 bits of entropy. Plenty for per-browser uniqueness.
     const bytes = new Uint8Array(8);
     if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
       crypto.getRandomValues(bytes);
@@ -41,13 +46,18 @@
     return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
   }
   function userId() {
+    // 1) If logged in, use the auth user id (stable across devices).
+    if (typeof window !== 'undefined' && window.ZoeAuth && window.ZoeAuth.user && window.ZoeAuth.user.id) {
+      return 'u:' + window.ZoeAuth.user.id;
+    }
+    // 2) Otherwise, mint/persist a browser-local fallback id.
     let id;
     try { id = localStorage.getItem(USER_ID_KEY); } catch (_) { id = null; }
     if (!id || !/^[a-f0-9]{16}$/.test(id)) {
       id = mintUserId();
       try { localStorage.setItem(USER_ID_KEY, id); } catch (_) { /* noop */ }
     }
-    return id;
+    return 'b:' + id; // 'b:' prefix = browser-local (not synced)
   }
 
   // ── network helpers ────────────────────────────────────────────────────

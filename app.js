@@ -1122,7 +1122,8 @@ document.addEventListener('DOMContentLoaded', hideLegacyChatPanel);
       groq: '',
       deepseek: '',
       mistral: '',
-      huggingface: ''
+      huggingface: '',
+      openrouter: ''     // Phase 13: universal multimodal key — opens every model
     },
     defaultEngine: 'auto',
     tone: 'professional',
@@ -1131,6 +1132,7 @@ document.addEventListener('DOMContentLoaded', hideLegacyChatPanel);
     workersaiModel: '@cf/meta/llama-3.2-3b-instruct', // Phase 4: Workers AI model
     cfAccountId: '', // Phase 4: Cloudflare Account ID (for Workers AI)
     cfToken: '', // Phase 4: Cloudflare API token (Workers AI permission)
+    openrouterModel: '', // Phase 13: optional OpenRouter model override
     mode: 'auto', // 'auto' | 'text' | 'image'
     folderFilter: 'all', // 'all' | 'text' | 'image'
     busy: false
@@ -1409,6 +1411,75 @@ Rules:
       }
     },
 
+    openrouter: {
+      // Phase 13: OpenRouter is the universal multimodal key.
+      // One key → Claude / GPT / Gemini / Llama / Mistral / vision / etc.
+      // Free models at https://openrouter.ai/models?max_price=0
+      // Free $1 credit on signup, then pay-as-you-go.
+      name: 'OpenRouter (universal)',
+      needsKey: true,
+      note: 'Paste one key in ⚙️ → get every frontier model. Get a key at openrouter.ai',
+      modelNames: [
+        'meta-llama/llama-3.3-70b-instruct:free',
+        'google/gemini-2.0-flash-exp:free',
+        'qwen/qwen-2.5-72b-instruct:free',
+        'mistralai/mistral-7b-instruct:free',
+        'openai/gpt-oss-20b:free'
+      ],
+      test: async (key) => {
+        try {
+          const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
+            headers: { 'Authorization': `Bearer ${key}` }
+          });
+          return res.ok;
+        } catch { return false; }
+      },
+      call: async (key, messages, sysPrompt) => {
+        const models = (STATE.openrouterModel
+          ? [STATE.openrouterModel, ...ENGINE_MODEL_POOL.openrouter]
+          : ENGINE_MODEL_POOL.openrouter);
+        const composed = [
+          { role: 'system', content: sysPrompt || 'You are a helpful assistant.' },
+          ...messages
+        ];
+        let lastErr = null;
+        for (const model of models) {
+          try {
+            const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${key}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': location.origin,
+                'X-Title': 'Agent Zoe'
+              },
+              body: JSON.stringify({
+                model,
+                messages: composed,
+                temperature: 0.7,
+                max_tokens: 2048
+              })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const text = data.choices?.[0]?.message?.content || '';
+              if (text) return text;
+            } else {
+              const body = await res.text().catch(() => '');
+              lastErr = `HTTP ${res.status}: ${body.slice(0, 200)}`;
+              if (res.status === 401 || res.status === 403) {
+                throw new Error('OpenRouter key invalid — check ⚙️ settings');
+              }
+            }
+          } catch (e) {
+            if (e.message?.includes('OpenRouter key invalid')) throw e;
+            lastErr = e.message;
+          }
+        }
+        throw new Error(lastErr || 'All OpenRouter models failed');
+      }
+    },
+
     pollinations: {
       name: 'Pollinations',
       needsKey: false,
@@ -1553,9 +1624,20 @@ Rules:
     }
   };
 
-  // Engine priority: keyless first, then keys once Worker proxy is live.
-  // Phase 4 puter added to the front so users get frontier models without setup.
-  const ENGINE_ORDER = ['puter', 'workersai', 'mistral', 'groq', 'pollinations'];
+  // Engine priority: keyless first (Pollinations works day-0), then OpenRouter
+  // if a key is set, then proxied engines, then Puter, then Workers AI.
+  const ENGINE_ORDER = ['pollinations', 'openrouter', 'puter', 'workersai', 'mistral', 'groq'];
+
+  // Model fallback pools per engine — tried in order, advances on 429.
+  const ENGINE_MODEL_POOL = {
+    openrouter: [
+      'meta-llama/llama-3.3-70b-instruct:free',
+      'google/gemini-2.0-flash-exp:free',
+      'qwen/qwen-2.5-72b-instruct:free',
+      'mistralai/mistral-7b-instruct:free',
+      'openai/gpt-oss-20b:free'
+    ]
+  };
 
   // ============== IMAGE ENGINE POOL ==============
   const IMAGE_ENGINES = {
@@ -1721,7 +1803,7 @@ Rules:
       return `Hey! 👋 I'm Zoe. I can help you write, plan, analyze, or think through anything. What's on your mind?`;
     }
     if (p.includes('who are you')) {
-      return `I'm Zoe — your AI assistant. I combine the best of multiple AI engines (Gemini, Groq, DeepSeek, Mistral, Pollinations) with a Mavis persona: direct, opinionated, and real. Configure your API keys in ⚙️ to unlock more engines.`;
+      return `I'm Zoe — your AI assistant. I run on a keyless engine (Pollinations) by default and can route to any frontier model through OpenRouter if you paste one key in ⚙️. I'm direct, opinionated, and I remember you across sessions.`;
     }
     if (p.includes('what can you do') || p === 'help') {
       return `Here's what I can help with:\n\n- **Write** — blog posts, emails, social posts, scripts, newsletters\n- **Plan** — events, projects, strategies, schedules\n- **Analyze** — feedback, data, content review, SWOT\n- **Brainstorm** — names, ideas, themes, concepts\n- **Code** — explain, generate, refactor\n- **Chat** — think through any question with you\n\nJust type naturally — I'll figure out what you need.`;
@@ -1738,7 +1820,7 @@ Rules:
     if (p.includes('email') || p.includes('write to')) {
       return `For a strong email:\n\n1. **Subject line** — specific, curiosity-driven, low cliche\n2. **First line** — earn the second line, skip "Hope this finds you well"\n3. **One ask** — don't dilute with multiple CTAs\n4. **Sign-off** — sound like a person, not a brand\n\nWant me to draft a specific email? Tell me the recipient, context, and ask.`;
     }
-    return `Got it. Tell me more about what you're trying to get done and I'll draft it, edit what you've got, or brainstorm options.\n\n*Note: This is a template response. Add an API key in ⚙️ to get real AI output from Gemini, Groq, DeepSeek, or Mistral.*`;
+    return `Got it. Tell me more about what you're trying to get done and I'll draft it, edit what you've got, or brainstorm options.\n\n*Note: If I'm giving you this canned reply, the engines couldn't reach the network. Check ⚙️ → Universal Multimodal Key (OpenRouter) to unlock all models, or just refresh — Pollinations works without any key.*`;
   }
 
   // ============== DOM ==============
@@ -1990,11 +2072,11 @@ Rules:
           if (tpl) {
             response = tpl;
             engineUsed = 'Template';
-            if (!STATE.keys.mistral && !STATE.keys.groq) {
-              response += `\n\n*(Add an API key in ⚙️ to unlock real AI responses)*`;
+            if (!STATE.keys.openrouter && !STATE.keys.mistral && !STATE.keys.groq) {
+              response += `\n\n*(Add an OpenRouter key in ⚙️ to unlock real AI responses, or refresh — Pollinations is keyless)*`;
             }
           } else {
-            response = `Sorry, I couldn't reach any AI engine. ${lastError ? 'Error: ' + lastError : 'Add at least one API key in ⚙️.'}`;
+            response = `Sorry, I couldn't reach any AI engine. ${lastError ? 'Error: ' + lastError : 'Paste an OpenRouter key in ⚙️, or refresh to retry.'}`;
             engineUsed = 'Error';
           }
         }
@@ -2301,6 +2383,9 @@ Rules:
     if ($('#usWorkersaiModel')) $('#usWorkersaiModel').value = STATE.workersaiModel || '@cf/meta/llama-3.2-3b-instruct';
     if ($('#usCfAccountId')) $('#usCfAccountId').value = STATE.cfAccountId || '';
     if ($('#usCfToken')) $('#usCfToken').value = STATE.cfToken || '';
+    // Phase 13: OpenRouter universal key
+    if ($('#usOpenrouterKey')) $('#usOpenrouterKey').value = STATE.keys.openrouter || '';
+    if ($('#usOpenrouterModel')) $('#usOpenrouterModel').value = STATE.openrouterModel || '';
     renderEngineStatuses();
     // Refresh status in the background each time the modal opens.
     fetchProxyStatus().then(renderEngineStatuses);
@@ -2318,6 +2403,9 @@ Rules:
     if ($('#usWorkersaiModel')) STATE.workersaiModel = $('#usWorkersaiModel').value;
     if ($('#usCfAccountId')) STATE.cfAccountId = $('#usCfAccountId').value.trim();
     if ($('#usCfToken')) STATE.cfToken = $('#usCfToken').value.trim();
+    // Phase 13: OpenRouter universal key — stored in localStorage (the user is opting in to a browser-side key)
+    if ($('#usOpenrouterKey')) STATE.keys.openrouter = $('#usOpenrouterKey').value.trim();
+    if ($('#usOpenrouterModel')) STATE.openrouterModel = $('#usOpenrouterModel').value.trim();
     saveState();
     toast('Settings saved', 'success');
     updateEngineStatus();
@@ -2343,9 +2431,39 @@ Rules:
     }
   }
 
+  async function testOpenrouter() {
+    const key = $('#usOpenrouterKey').value.trim();
+    const statusEl = $('#usStatusOpenrouter');
+    if (!key) {
+      if (statusEl) { statusEl.textContent = '⚠ Paste a key first (openrouter.ai)'; statusEl.className = 'us-status us-status-error'; }
+      return;
+    }
+    if (statusEl) { statusEl.textContent = 'Testing...'; statusEl.className = 'us-status'; }
+    try {
+      const ok = await ENGINES.openrouter.test(key);
+      if (statusEl) {
+        statusEl.textContent = ok ? '✓ key valid — full multimodal unlocked' : '✗ key rejected';
+        statusEl.className = 'us-status ' + (ok ? 'us-status-ok' : 'us-status-error');
+      }
+    } catch (e) {
+      if (statusEl) { statusEl.textContent = '✗ ' + (e.message || 'test failed').slice(0, 60); statusEl.className = 'us-status us-status-error'; }
+    }
+  }
+
   async function refreshKeys() {
-    const all = ['gemini', 'groq', 'deepseek', 'mistral', 'huggingface'];
+    const all = ['openrouter', 'gemini', 'groq', 'deepseek', 'mistral', 'huggingface'];
     all.forEach(id => setStatusEl(id, '⏳ checking…', ''));
+    // Phase 13: OpenRouter key is browser-side, so test it directly.
+    if (STATE.keys.openrouter && ENGINES.openrouter?.test) {
+      try {
+        const ok = await ENGINES.openrouter.test(STATE.keys.openrouter);
+        setStatusEl('openrouter', ok ? '✓ key valid' : '✗ key invalid', ok ? 'ok' : 'error');
+      } catch (e) {
+        setStatusEl('openrouter', '✗ ' + (e.message || 'test failed').slice(0, 50), 'error');
+      }
+    } else {
+      setStatusEl('openrouter', '— no key set', 'muted');
+    }
     await fetchProxyStatus();
     renderEngineStatuses();
     if (PROXY_STATUS?.proxyLive) {
@@ -2383,6 +2501,9 @@ Rules:
       if (!raw) return;
       const loaded = JSON.parse(raw);
       Object.assign(STATE, loaded);
+      // Phase 13: ensure new fields exist when loading older state
+      if (!STATE.keys) STATE.keys = {};
+      if (typeof STATE.keys.openrouter === 'undefined') STATE.keys.openrouter = '';
     } catch (e) {
       console.warn('Failed to load state:', e);
     }
@@ -2425,6 +2546,7 @@ Rules:
       if (t.closest('#usSaveSettings')) { saveSettings(); return; }
       if (t.closest('#usRefreshKeys')) { refreshKeys(); return; }
       if (t.closest('#usTestWorkersai')) { testWorkersai(); return; }
+      if (t.closest('#usTestOpenrouter')) { testOpenrouter(); return; }
       // Close image modal
       if (t.closest('#usCloseImage')) { $('#usImageModal').classList.remove('open'); return; }
       // Click outside modal (backdrop)
