@@ -130,7 +130,27 @@ function tryParseJson(text) {
 
 // ---------- LLM call ----------
 
-async function callPollinations(messages) {
+async function callAI(messages) {
+  // Try the "Hydra Brain" proxy first (OpenRouter chain -> Pollinations)
+  try {
+    const res = await fetch('/api/proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chain: ['openrouter', 'pollinations'],
+        messages: messages.slice(1), // user message
+        sysPrompt: messages[0].content // system prompt
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.text || '';
+    }
+  } catch (e) {
+    console.warn('Proxy build call failed, falling back to direct Pollinations:', e);
+  }
+
+  // Final fallback: Direct Pollinations
   const res = await fetch(POLLINATIONS, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -140,14 +160,14 @@ async function callPollinations(messages) {
       stream: false
     })
   });
-  if (!res.ok) throw new Error('Pollinations HTTP ' + res.status);
+  if (!res.ok) throw new Error('AI Engine failed (HTTP ' + res.status + ')');
   return await res.text();
 }
 
 // ---------- Main entry: send ----------
 
 async function send(text) {
-  if (B.busy) { (B.toast && B.toast('Build agent is busy'); return; }
+  if (B.busy) { if (B.toast) B.toast('Build agent is busy'); return; }
   chatBridge();
   const trimmed = String(text || '').trim();
   if (!trimmed) return;
@@ -165,7 +185,7 @@ async function send(text) {
     }
 
     const system = buildSystemPrompt(targetFile, targetContent, FILES.SHIPPED_PATHS);
-    const reply = await callPollinations([
+    const reply = await callAI([
       { role: 'system', content: system },
       { role: 'user', content: trimmed }
     ]);
@@ -271,7 +291,7 @@ function toggle() {
   }
   const app = document.getElementById('usApp');
   if (app) app.dataset.build = B.enabled ? 'true' : 'false';
-  (B.toast && B.toast(B.enabled ? 'Build mode ON — chat will edit files' : 'Build mode OFF');
+  if (B.toast) B.toast(B.enabled ? 'Build mode ON — chat will edit files' : 'Build mode OFF');
 }
 
 function updateBadge() {
