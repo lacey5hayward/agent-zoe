@@ -104,7 +104,7 @@ async function saveCurrent() {
   toast('Saved ' + path, 'success');
   await applyLive(path, text);
   rerenderFilesTab();
-  if (BUILD()) BUILD().onFileSaved?.(path, text);
+  if (BUILD()) (BUILD() && BUILD().onFileSaved(path, text);
 }
 
 async function revertCurrent() {
@@ -152,7 +152,7 @@ async function applyPreview() {
   await applyLive(file, updated);
   $('#usEditorModal').classList.remove('open');
   rerenderFilesTab();
-  if (BUILD()) BUILD().onPreviewApplied?.({ file, find, replace, explanation: E.proposed.explanation });
+  if (BUILD()) (BUILD() && BUILD().onPreviewApplied({ file, find, replace, explanation: E.proposed.explanation });
   E.mode = 'view';
   E.proposed = null;
 }
@@ -161,7 +161,7 @@ function skipPreview() {
   if (E.mode !== 'preview' || !E.proposed) return;
   const explanation = E.proposed.explanation || '';
   $('#usEditorModal').classList.remove('open');
-  if (BUILD()) BUILD().onPreviewSkipped?.(E.proposed);
+  if (BUILD()) (BUILD() && BUILD().onPreviewSkipped(E.proposed);
   E.mode = 'view';
   E.proposed = null;
 }
@@ -187,7 +187,7 @@ async function applyLive(path, content) {
     try {
       await LIVE_JS.rel('./' + name);
       toast(name + ' re-imported (live)', 'success');
-      if (name === 'build-agent.js' && BUILD()) BUILD().onReimported?.();
+      if (name === 'build-agent.js' && BUILD()) (BUILD() && BUILD().onReimported();
       return;
     } catch (e) {
       showReloadNeeded(name + ' re-import failed — reload to apply');
@@ -292,7 +292,7 @@ function formatBytes(n) {
 }
 
 function escapeHtml(s) {
-  return String(s ?? '').replace(/[&<>"']/g, c => ({
+  return (String(s !== null && String(s !== undefined ? String(s : '').replace(/[&<>"']/g,) c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   })[c]);
 }
@@ -354,7 +354,7 @@ function bootstrap() {
       ta.selectionStart = ta.selectionEnd = start + 2;
       ta.dispatchEvent(new Event('input', { bubbles: true }));
     }
-    if (e.key === 'Escape' && document.getElementById('usEditorModal')?.classList.contains('open')) {
+    if (e.key === 'Escape' && (document.getElementById("usEditorModal") && document.getElementById("usEditorModal").classList).contains('open')) {
       closeFile();
     }
   });

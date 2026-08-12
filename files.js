@@ -79,7 +79,7 @@ async function write(path, content) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put(String(content ?? ''), path);
+    (tx.objectStore(STORE).put(String(content !== null && tx.objectStore(STORE).put(String(content !== undefined ? tx.objectStore(STORE).put(String(content : ''),) path);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });

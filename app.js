@@ -1248,6 +1248,42 @@ Rules:
 
   // ============== ENGINE DEFINITIONS ==============
   const ENGINES = {
+    openrouter: {
+      name: 'OpenRouter (universal key)',
+      needsKey: true,
+      note: 'One key for Claude, GPT, Gemini, Llama — get at openrouter.ai',
+      test: async (key) => {
+        try {
+          const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
+            headers: { 'Authorization': 'Bearer ' + key }
+          });
+          return res.ok;
+        } catch (e) { return false; }
+      },
+      call: async (key, messages, sysPrompt) => {
+        const proxied = await callViaProxy('openrouter', messages, sysPrompt);
+        if (proxied !== null) return proxied;
+        const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + key,
+            'HTTP-Referer': location.origin,
+            'X-Title': 'Agent Zoe'
+          },
+          body: JSON.stringify({
+            model: 'meta-llama/llama-3.3-70b-instruct:free',
+            messages: [{ role: 'system', content: sysPrompt }].concat(messages)
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error((err.error && err.error.message) || 'OpenRouter error');
+        }
+        const data = await res.json();
+        return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+      }
+    },
     gemini: {
       name: 'Gemini',
       needsKey: true,
@@ -1297,7 +1333,7 @@ Rules:
             });
             if (res.ok) {
               const data = await res.json();
-              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              const text = data.(candidates && candidates[0].content.(parts && parts[0].text;
               if (text) return text;
             }
             lastErr = `HTTP ${res.status}`;
@@ -1342,7 +1378,7 @@ Rules:
           throw new Error(`HTTP ${res.status}: ${err.slice(0, 200)}`);
         }
         const data = await res.json();
-        return data.choices?.[0]?.message?.content || '';
+        return data.(choices && choices[0].message.content || '';
       }
     },
 
@@ -1379,7 +1415,7 @@ Rules:
           throw new Error(`HTTP ${res.status}: ${err.slice(0, 200)}`);
         }
         const data = await res.json();
-        return data.choices?.[0]?.message?.content || '';
+        return data.(choices && choices[0].message.content || '';
       }
     },
 
@@ -1416,7 +1452,7 @@ Rules:
           throw new Error(`HTTP ${res.status}: ${err.slice(0, 200)}`);
         }
         const data = await res.json();
-        return data.choices?.[0]?.message?.content || '';
+        return data.(choices && choices[0].message.content || '';
       }
     },
 
@@ -1471,7 +1507,7 @@ Rules:
             });
             if (res.ok) {
               const data = await res.json();
-              const text = data.choices?.[0]?.message?.content || '';
+              const text = data.(choices && choices[0].message.content || '';
               if (text) return text;
             } else {
               const body = await res.text().catch(() => '');
@@ -1481,7 +1517,7 @@ Rules:
               }
             }
           } catch (e) {
-            if (e.message?.includes('OpenRouter key invalid')) throw e;
+            if (e.(message && message.includes)('OpenRouter key invalid')) throw e;
             lastErr = e.message;
           }
         }
@@ -1538,7 +1574,7 @@ Rules:
               try {
                 const json = JSON.parse(payload);
                 // Pollinations uses OpenAI-compatible deltas
-                const delta = json.choices?.[0]?.delta?.content;
+                const delta = json.(choices && choices[0].delta.content;
                 if (delta) {
                   full += delta;
                   onChunk(delta, full);
@@ -1563,9 +1599,9 @@ Rules:
       name: 'Puter (GPT-5)',
       needsKey: false,
       supportsStream: false, // Puter uses async-iterable for streaming; non-stream is simpler
-      test: async () => typeof puter !== 'undefined' && typeof puter.ai?.chat === 'function',
+      test: async () => typeof puter !== 'undefined' && typeof (puter.ai && puter.ai.chat) === 'function',
       call: async (key, messages, sysPrompt) => {
-        if (typeof puter === 'undefined' || !puter.ai?.chat) {
+        if (typeof puter === 'undefined' || !(puter.ai && puter.ai.chat)) {
           throw new Error('Puter.js not loaded (check network/CDN).');
         }
         const combined = [
@@ -1576,14 +1612,14 @@ Rules:
         const response = await puter.ai.chat(combined, { model });
         // Puter returns either a string or an object { message: { content } }
         if (typeof response === 'string') return response;
-        if (response?.message?.content) {
+        if ((response && response.message && response.message.content)) {
           // content can be a string or array of {text} parts
           if (typeof response.message.content === 'string') return response.message.content;
           if (Array.isArray(response.message.content)) {
             return response.message.content.map(p => p.text || '').join('');
           }
         }
-        if (response?.toString) return response.toString();
+        if ((response && response.toString)) return response.toString();
         return JSON.stringify(response);
       }
     },
@@ -1598,7 +1634,7 @@ Rules:
       needsKey: true,
       supportsStream: false,
       test: async (creds) => {
-        if (!creds?.accountId || !creds?.token) return false;
+        if (!(creds && creds.accountId) || !(creds && creds.token)) return false;
         try {
           const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${creds.accountId}/ai/run/@cf/meta/llama-3.2-3b-instruct`, {
             method: 'POST',
@@ -1609,7 +1645,7 @@ Rules:
         } catch { return false; }
       },
       call: async (creds, messages, sysPrompt) => {
-        if (!creds?.accountId || !creds?.token) {
+        if (!(creds && creds.accountId) || !(creds && creds.token)) {
           throw new Error('Set CF Account ID + API token in Settings (⚙️ → Cloudflare Workers AI)');
         }
         const model = STATE.workersaiModel || '@cf/meta/llama-3.2-3b-instruct';
@@ -1628,7 +1664,7 @@ Rules:
           throw new Error(`Workers AI HTTP ${res.status}: ${err.slice(0, 200)}`);
         }
         const data = await res.json();
-        return data.result?.response || data.response || '';
+        return (data.result && data.result.response) || data.response || '';
       }
     }
   };
@@ -2011,8 +2047,8 @@ Rules:
           } else if (engine.needsKey && !STATE.keys[engineId]) {
             // Phase 4: also allow the engine if the Cloudflare Worker proxy
             // has the matching secret configured (server-side key).
-            const proxyLive = PROXY_STATUS?.proxyLive
-              && PROXY_STATUS.engines?.[engineId] === 'live';
+            const proxyLive = (PROXY_STATUS && PROXY_STATUS.proxyLive)
+              && PROXY_STATUS.(engines && engines[engineId] === 'live';
             if (!proxyLive) continue;
           }
           try {
@@ -2081,7 +2117,7 @@ Rules:
           if (tpl) {
             response = tpl;
             engineUsed = 'Template';
-            if (!STATE.keys.openrouter && !STATE.keys.mistral && !STATE.keys.groq) {
+            if (!(STATE.keys && STATE.keys.openrouter) && !STATE.keys.mistral && !STATE.keys.groq) {
               response += `\n\n*(Add an OpenRouter key in ⚙️ to unlock real AI responses, or refresh — Pollinations is keyless)*`;
             }
           } else {
@@ -2268,12 +2304,12 @@ Rules:
     if (!list) return;
     // Phase 5: Files tab is owned by editor.js — delegate.
     if (STATE.folderFilter === 'files') {
-      if (window.UsEditor?.renderFilesTab) {
+      if ((window.UsEditor && window.UsEditor.renderFilesTab)) {
         window.UsEditor.renderFilesTab(list);
         return;
       }
     }
-    const search = ($('#usFolderSearch')?.value || '').toLowerCase();
+    const search = ((document.getElementById("usFolderSearch") || {}).value || '').toLowerCase();
     const filterType = STATE.folderFilter || 'all';
     let filtered = STATE.outputs.filter(o => {
       const matchesType = filterType === 'all' || o.type === filterType;
@@ -2381,7 +2417,7 @@ Rules:
       return;
     }
     list.forEach(id => {
-      const live = PROXY_STATUS.engines?.[id] === 'live';
+      const live = PROXY_STATUS.(engines && engines[id] === 'live';
       setStatusEl(id, live ? '✓ ready' : '✗ secret not set', live ? 'ok' : 'muted');
     });
   }
@@ -2393,7 +2429,7 @@ Rules:
     if ($('#usCfAccountId')) $('#usCfAccountId').value = STATE.cfAccountId || '';
     if ($('#usCfToken')) $('#usCfToken').value = STATE.cfToken || '';
     // Phase 13: OpenRouter universal key
-    if ($('#usOpenrouterKey')) $('#usOpenrouterKey').value = STATE.keys.openrouter || '';
+    if ($('#usOpenrouterKey')) $('#usOpenrouterKey').value = (STATE.keys && STATE.keys.openrouter) || '';
     if ($('#usOpenrouterModel')) $('#usOpenrouterModel').value = STATE.openrouterModel || '';
     renderEngineStatuses();
     // Refresh status in the background each time the modal opens.
@@ -2413,7 +2449,7 @@ Rules:
     if ($('#usCfAccountId')) STATE.cfAccountId = $('#usCfAccountId').value.trim();
     if ($('#usCfToken')) STATE.cfToken = $('#usCfToken').value.trim();
     // Phase 13: OpenRouter universal key — stored in localStorage (the user is opting in to a browser-side key)
-    if ($('#usOpenrouterKey')) STATE.keys.openrouter = $('#usOpenrouterKey').value.trim();
+    if ($('#usOpenrouterKey')) (STATE.keys && STATE.keys.openrouter) = $('#usOpenrouterKey').value.trim();
     if ($('#usOpenrouterModel')) STATE.openrouterModel = $('#usOpenrouterModel').value.trim();
     saveState();
     toast('Settings saved', 'success');
@@ -2463,9 +2499,9 @@ Rules:
     const all = ['openrouter', 'gemini', 'groq', 'deepseek', 'mistral', 'huggingface'];
     all.forEach(id => setStatusEl(id, '⏳ checking…', ''));
     // Phase 13: OpenRouter key is browser-side, so test it directly.
-    if (STATE.keys.openrouter && ENGINES.openrouter?.test) {
+    if ((STATE.keys && STATE.keys.openrouter) && ENGINES.openrouter.test) {
       try {
-        const ok = await ENGINES.openrouter.test(STATE.keys.openrouter);
+        const ok = await ENGINES.openrouter.test((STATE.keys && STATE.keys.openrouter));
         setStatusEl('openrouter', ok ? '✓ key valid' : '✗ key invalid', ok ? 'ok' : 'error');
       } catch (e) {
         setStatusEl('openrouter', '✗ ' + (e.message || 'test failed').slice(0, 50), 'error');
@@ -2475,7 +2511,7 @@ Rules:
     }
     await fetchProxyStatus();
     renderEngineStatuses();
-    if (PROXY_STATUS?.proxyLive) {
+    if ((PROXY_STATUS && PROXY_STATUS.proxyLive)) {
       toast('Engine status refreshed', 'success');
     } else {
       toast('Worker not deployed yet (Phase 4)', 'muted');
@@ -2512,7 +2548,7 @@ Rules:
       Object.assign(STATE, loaded);
       // Phase 13: ensure new fields exist when loading older state
       if (!STATE.keys) STATE.keys = {};
-      if (typeof STATE.keys.openrouter === 'undefined') STATE.keys.openrouter = '';
+      if (typeof (STATE.keys && STATE.keys.openrouter) === 'undefined') (STATE.keys && STATE.keys.openrouter) = '';
     } catch (e) {
       console.warn('Failed to load state:', e);
     }
@@ -2636,7 +2672,7 @@ Rules:
       if (imgAction) {
         const action = imgAction.dataset.imageAction;
         const container = imgAction.closest('.us-message');
-        const imgCont = container?.querySelector('.us-msg-image');
+        const imgCont = (container && container.querySelector)('.us-msg-image');
         if (!imgCont) return;
         const url = imgCont.dataset.imageUrl;
         const prompt = imgCont.dataset.imagePrompt;
@@ -2773,8 +2809,8 @@ Rules:
   // DeepSeek / Gemini through it so the user never has to put keys in localStorage.
   // Returns the response text if the proxy handled it, or null to fall through.
   async function callViaProxy(engineId, messages, sysPrompt) {
-    if (!PROXY_STATUS?.proxyLive) return null;
-    if (PROXY_STATUS.engines?.[engineId] !== 'live') return null;
+    if (!(PROXY_STATUS && PROXY_STATUS.proxyLive)) return null;
+    if (PROXY_STATUS.(engines && engines[engineId] !== 'live') return null;
     try {
       const res = await fetch('/api/proxy', {
         method: 'POST',
@@ -2836,7 +2872,7 @@ Rules:
     // Show Pollinations-only status until the Worker is in place.
     updateEngineStatus('Zoe is ready · Pollinations + Puter active');
     fetchProxyStatus().then(s => {
-      if (s?.proxyLive) {
+      if ((s && s.proxyLive)) {
         const live = Object.values(s.engines || {}).filter(v => v === 'live').length;
         updateEngineStatus(`Zoe is ready · ${live} server-side engines live`);
       }

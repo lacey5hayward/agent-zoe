@@ -278,6 +278,6 @@
     Auth.init();
   }
 
-  // Expose for other modules (e.g. memory.js can call Auth.user?.id)
+  // Expose for other modules (e.g. memory.js can call (Auth.user && Auth.user.id))
   window.ZoeAuth = Auth;
 })();

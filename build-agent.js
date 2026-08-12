@@ -147,7 +147,7 @@ async function callPollinations(messages) {
 // ---------- Main entry: send ----------
 
 async function send(text) {
-  if (B.busy) { B.toast?.('Build agent is busy'); return; }
+  if (B.busy) { (B.toast && B.toast('Build agent is busy'); return; }
   chatBridge();
   const trimmed = String(text || '').trim();
   if (!trimmed) return;
@@ -271,7 +271,7 @@ function toggle() {
   }
   const app = document.getElementById('usApp');
   if (app) app.dataset.build = B.enabled ? 'true' : 'false';
-  B.toast?.(B.enabled ? 'Build mode ON — chat will edit files' : 'Build mode OFF');
+  (B.toast && B.toast(B.enabled ? 'Build mode ON — chat will edit files' : 'Build mode OFF');
 }
 
 function updateBadge() {
