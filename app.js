@@ -2407,18 +2407,18 @@ Rules:
   }
 
   function renderEngineStatuses() {
-    const list = ['gemini', 'groq', 'deepseek', 'mistral', 'huggingface'];
-    if (!PROXY_STATUS) {
-      list.forEach(id => setStatusEl(id, '⏳ worker not deployed (Phase 4)', 'muted'));
+    var list = ['openrouter', 'gemini', 'groq', 'deepseek', 'mistral', 'huggingface'];
+    if (!PROXY_STATUS || !PROXY_STATUS.proxyLive) {
+      list.forEach(function(id) { 
+        var statusId = id === 'openrouter' ? 'openrouterServer' : id;
+        setStatusEl(statusId, '⏳ worker not deployed (Phase 4)', 'muted'); 
+      });
       return;
     }
-    if (!PROXY_STATUS.proxyLive) {
-      list.forEach(id => setStatusEl(id, '⏳ worker not deployed (Phase 4)', 'muted'));
-      return;
-    }
-    list.forEach(id => {
-      const live = (PROXY_STATUS.engines && PROXY_STATUS.engines[id] === 'live');
-      setStatusEl(id, live ? '✓ ready' : '✗ secret not set', live ? 'ok' : 'muted');
+    list.forEach(function(id) {
+      var live = (PROXY_STATUS.engines && PROXY_STATUS.engines[id] === 'live');
+      var statusId = id === 'openrouter' ? 'openrouterServer' : id;
+      setStatusEl(statusId, live ? '✓ ready' : '✗ secret not set', live ? 'ok' : 'muted');
     });
   }
 
@@ -2499,10 +2499,13 @@ Rules:
     const all = ['openrouter', 'gemini', 'groq', 'deepseek', 'mistral', 'huggingface'];
     all.forEach(id => setStatusEl(id, '⏳ checking…', ''));
     // Phase 13: OpenRouter key is browser-side, so test it directly.
-    if ((STATE.keys && STATE.keys.openrouter) && ENGINES.openrouter.test) {
+    if (STATE.keys && STATE.keys.openrouter && ENGINES.openrouter && ENGINES.openrouter.test) {
       try {
-        const ok = await ENGINES.openrouter.test((STATE.keys && STATE.keys.openrouter));
-        setStatusEl('openrouter', ok ? '✓ key valid' : '✗ key invalid', ok ? 'ok' : 'error');
+        ENGINES.openrouter.test(STATE.keys.openrouter).then(function(ok) {
+          setStatusEl('openrouter', ok ? '✓ key valid' : '✗ key invalid', ok ? 'ok' : 'error');
+        }).catch(function(e) {
+          setStatusEl('openrouter', '✗ ' + (e.message || 'test failed').slice(0, 50), 'error');
+        });
       } catch (e) {
         setStatusEl('openrouter', '✗ ' + (e.message || 'test failed').slice(0, 50), 'error');
       }
@@ -2971,10 +2974,10 @@ Rules:
     }
 
     // 1d. Prompt chips (fused into the chat bar)
-    document.querySelectorAll('.us-prompt-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        const text = chip.dataset.prompt || chip.textContent.trim();
-        const input = document.getElementById('usInput');
+    document.querySelectorAll('.us-prompt-chip').forEach(function(chip) {
+      chip.addEventListener('click', function() {
+        var text = chip.dataset.prompt || chip.textContent.trim();
+        var input = document.getElementById('usInput');
         if (input) {
           input.value = text;
           input.focus();
@@ -2984,6 +2987,28 @@ Rules:
         if (typeof sendMessage === 'function') sendMessage();
       });
     });
+
+    // 1e. Diagnostic Command (/diag)
+    var diagInput = document.getElementById('usInput');
+    if (diagInput) {
+      diagInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey && diagInput.value.trim() === '/diag') {
+          e.preventDefault();
+          diagInput.value = '';
+          var status = PROXY_STATUS || { proxyLive: false, engines: {} };
+          var persona = (window.PersonaState && window.PersonaState.getActive()) ? window.PersonaState.getActive().id : 'none';
+          var buildMode = (window.UsBuild && window.UsBuild.enabled && window.UsBuild.enabled()) ? 'ON' : 'OFF';
+          var info = '**Zoe Diagnostic Report**\n\n' +
+            '- **Proxy Live**: ' + status.proxyLive + '\n' +
+            '- **OpenRouter Secret**: ' + ((status.engines && status.engines.openrouter) || 'missing') + '\n' +
+            '- **Active Persona**: ' + persona + '\n' +
+            '- **Build Mode**: ' + buildMode + '\n' +
+            '- **Browser Key (OR)**: ' + ((STATE.keys && STATE.keys.openrouter) ? 'Set' : 'Missing') + '\n\n' +
+            'Check Cloudflare Environment Variables for **OPENROUTER_API_KEY** if secret is missing.';
+          addMessage('ai', info, 'System');
+        }
+      });
+    }
 
     // 2. Upload Button
     const uploadBtn = document.getElementById('zoeUploadBtn');
