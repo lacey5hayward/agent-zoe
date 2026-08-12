@@ -1272,7 +1272,7 @@ Rules:
             'X-Title': 'Agent Zoe'
           },
           body: JSON.stringify({
-            model: 'meta-llama/llama-3.3-70b-instruct:free',
+            model: 'google/gemma-2-9b-it:free',
             messages: [{ role: 'system', content: sysPrompt }].concat(messages)
           })
         });

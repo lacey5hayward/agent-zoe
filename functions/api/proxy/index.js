@@ -136,9 +136,10 @@ const OPENAI_COMPAT = {
   openrouter: {
     id: 'openrouter',
     url: 'https://openrouter.ai/api/v1/chat/completions',
-    model: 'meta-llama/llama-3.3-70b-instruct:free',
+    model: 'google/gemma-2-9b-it:free',
     secret: 'OPENROUTER_API_KEY',
-    label: 'OpenRouter'
+    label: 'OpenRouter',
+    fallbacks: ['mistralai/mistral-7b-instruct:free', 'huggingfaceh4/zephyr-7b-beta:free']
   },
   // fireworks:  { url: 'https://api.fireworks.ai/inference/v1/chat/completions', model: 'accounts/fireworks/models/llama-v3p3-70b-instruct', secret: 'FIREWORKS_API_KEY', label: 'Fireworks' },
 };
@@ -232,39 +233,49 @@ function jsonResponse(obj, status = 200) {
 // --- Generic OpenAI-compatible caller --------------------------------------
 async function callOpenAICompatible(engineId, { messages, sysPrompt, model }, env) {
   const cfg = OPENAI_COMPAT[engineId];
-  // secret: null = keyless (e.g. Pollinations, Kilo, LLM7, etc.). Skip auth header, skip key check.
   const headers = { 'Content-Type': 'application/json' };
   if (cfg.secret) {
     const key = env[cfg.secret];
     if (!key) throw { kind: 'missing-key', engine: engineId, secret: cfg.secret };
     headers['Authorization'] = `Bearer ${key}`;
   }
-  // Optional per-engine extra headers (e.g. Azure uses 'api-key' not Bearer).
   if (typeof cfg.extraHeaders === 'function') {
     Object.assign(headers, cfg.extraHeaders(env));
   }
-  // Optional per-engine URL builder (e.g. Azure needs deployment in path).
-  const url = (typeof cfg.buildUrl === 'function')
-    ? cfg.buildUrl(env, model)
-    : cfg.url;
+  const url = (typeof cfg.buildUrl === 'function') ? cfg.buildUrl(env, model) : cfg.url;
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      model: model || cfg.model,
-      messages: [{ role: 'system', content: sysPrompt || 'You are a helpful assistant.' }, ...messages],
-      temperature: 0.7,
-      max_tokens: 2048
-    })
-  });
-  if (!res.ok) {
-    throw { kind: 'http', engine: engineId, status: res.status, body: (await res.text()).slice(0, 500) };
+  // Try the primary model
+  const modelsToTry = [model || cfg.model];
+  if (cfg.fallbacks) modelsToTry.push(...cfg.fallbacks);
+
+  let lastErr = null;
+  for (const m of modelsToTry) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: m,
+          messages: [{ role: 'system', content: sysPrompt || 'You are a helpful assistant.' }, ...messages],
+          temperature: 0.7,
+          max_tokens: 2048
+        })
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        throw { kind: 'http', engine: engineId, status: res.status, body: body.slice(0, 500) };
+      }
+      const data = await res.json();
+      const text = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+      if (!text) throw { kind: 'empty', engine: engineId };
+      return { engine: engineId, type: 'text', text, modelUsed: m };
+    } catch (e) {
+      lastErr = e;
+      if (e.kind === 'missing-key') throw e;
+      console.warn(`Model ${m} failed:`, e.message || e);
+    }
   }
-  const data = await res.json();
-  const text = data.choices?.[0]?.message?.content || '';
-  if (!text) throw { kind: 'empty', engine: engineId };
-  return { engine: engineId, type: 'text', text };
+  throw lastErr;
 }
 
 // --- Special-engine callers ------------------------------------------------
