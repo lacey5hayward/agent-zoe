@@ -30,6 +30,7 @@ const ENGINE_SECRETS = {
   huggingface: 'HUGGINGFACE_API_KEY',
   azure:       'AZURE_OPENAI_API_KEY',
   oracle:      'ORACLE_API_KEY',
+  openrouter:  'OPENROUTER_API_KEY',
 };
 
 // Engines that are always available (no secret required)

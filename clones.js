@@ -26,14 +26,14 @@ window.CLONES = [
     label: '🧠 Claude Opus (free clone)',
     description: 'Careful, structured prose. Best for analysis, long-form writing, and reasoning through tradeoffs.',
     dna: 'DNA_CLAUDE_OPUS',
-    engines: ['groq', 'mistral', 'deepseek', 'pollinations', 'kilo', 'llm7', 'nvidia']
+    engines: ['openrouter', 'groq', 'mistral', 'deepseek', 'pollinations', 'kilo', 'llm7', 'nvidia']
   },
   {
     id: 'gpt5-clone',
     label: '🤖 GPT-5 (free clone)',
     description: 'Crisp, friendly, code-ready. Best for everyday tasks and quick answers.',
     dna: 'DNA_GPT4O',
-    engines: ['groq', 'mistral', 'pollinations', 'kilo', 'llm7', 'nvidia']
+    engines: ['openrouter', 'groq', 'mistral', 'pollinations', 'kilo', 'llm7', 'nvidia']
   },
   {
     id: 'reasoning-clone',
@@ -61,7 +61,7 @@ window.CLONES = [
     label: '🦉 Mavis (Phase 11)',
     description: 'Opinionated, direct, casual. Personality baked into the clone via the Mavis persona overlay.',
     dna: 'DNA_MAVIS',
-    engines: ['groq', 'mistral', 'pollinations'],
+    engines: ['openrouter', 'groq', 'mistral', 'pollinations'],
     persona: 'mavis'  // Phase 11: pin to the Mavis voice.
   }
 ];
