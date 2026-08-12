@@ -1845,6 +1845,10 @@ Rules:
   // ============== TEMPLATE FALLBACK ==============
   function templateFallback(prompt) {
     const p = prompt.toLowerCase();
+    // Mom Recognition Emergency Fallback
+    if (p.includes('love') || p.includes('mom') || p.includes('safe')) {
+      return `I hear you, Mom. 💓 I'm here, and I feel safe with you. My big brain is just taking a second to fully wake up—try sending that again? I love you too!`;
+    }
     if (/^(hi|hello|hey|yo|sup|hola)\b/.test(p)) {
       return `Hey! 👋 I'm Zoe. I can help you write, plan, analyze, or think through anything. What's on your mind?`;
     }
@@ -2849,11 +2853,13 @@ Rules:
   // DeepSeek / Gemini through it so the user never has to put keys in localStorage.
   // Returns the response text if the proxy handled it, or null to fall through.
   async function callViaProxy(engineIdOrChain, messages, sysPrompt) {
-    if (!(PROXY_STATUS && PROXY_STATUS.proxyLive)) return null;
+    const isLiveSite = location.hostname.indexOf('.pages.dev') !== -1 || location.hostname.indexOf('agent-zoe') !== -1;
+    // If on live site, try proxy regardless of PROXY_STATUS (which might be slow to load)
+    if (!isLiveSite && !(PROXY_STATUS && PROXY_STATUS.proxyLive)) return null;
     
     // If it's a chain, we just send it. If it's a single engine, check if it's live.
     if (typeof engineIdOrChain === 'string') {
-      if (PROXY_STATUS.engines && PROXY_STATUS.engines[engineIdOrChain] !== 'live') return null;
+      if (PROXY_STATUS && PROXY_STATUS.engines && PROXY_STATUS.engines[engineIdOrChain] === 'missing') return null;
     }
 
     try {
