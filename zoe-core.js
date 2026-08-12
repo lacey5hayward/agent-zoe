@@ -2817,6 +2817,18 @@ Rules:
       }
     });
 
+    // Stealth Mode toggle listener
+    const stealthBtn = document.getElementById('usStealthBtn');
+    if (stealthBtn) {
+      stealthBtn.addEventListener('click', () => {
+        const active = stealthBtn.dataset.active === 'true';
+        const next = !active;
+        stealthBtn.dataset.active = next;
+        stealthBtn.textContent = next ? '🕵️ Stealth: ON' : '🕵️ Stealth: OFF';
+        toast(next ? 'Stealth Mode ON — traffic is obfuscated' : 'Stealth Mode OFF', next ? 'success' : 'info');
+      });
+    }
+
     // Auto-resize textarea + show image options if image toggle is active
     $('#usInput').addEventListener('input', (e) => {
       e.target.style.height = 'auto';
@@ -2885,8 +2897,13 @@ Rules:
         ? { engine: engineIdOrChain, messages: slimMessages, sysPrompt }
         : { chain: engineIdOrChain, messages: slimMessages, sysPrompt };
 
-      // v2.3.0: Stealth Mode — encode payload in Base64 to bypass library firewall keyword filters
-      const stealthPayload = { stealthData: btoa(JSON.stringify(rawBody)) };
+      // v2.3.1: Check if Stealth Mode toggle is active
+      const stealthBtn = document.getElementById('usStealthBtn');
+      const isStealth = stealthBtn && stealthBtn.dataset.active === 'true';
+
+      const payloadToSend = isStealth 
+        ? { stealthData: btoa(JSON.stringify(rawBody)) }
+        : rawBody;
 
       // v2.2.0: "iPad Optimized" — increased timeout for mobile Wi-Fi
       const controller = new AbortController();
@@ -2895,7 +2912,7 @@ Rules:
       const res = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(stealthPayload),
+        body: JSON.stringify(payloadToSend),
         signal: controller.signal
       });
       clearTimeout(timeoutId);

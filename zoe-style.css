@@ -149,6 +149,20 @@ a { color: #0d9488; }
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* Stealth Mode Toggle Styles */
+#usStealthBtn {
+  color: #94a3b8 !important;
+  border-color: rgba(148, 163, 184, 0.3) !important;
+  transition: all 0.2s ease;
+  font-weight: 600 !important;
+}
+#usStealthBtn[data-active="true"] {
+  color: #c084fc !important; /* Neon Purple */
+  border-color: rgba(192, 132, 252, 0.6) !important;
+  background: rgba(192, 132, 252, 0.15) !important;
+  box-shadow: 0 0 12px rgba(192, 132, 252, 0.3);
+}
+
 .drafts-list { display: flex; flex-direction: column; gap: 10px; }
 .draft-item { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; display: grid; grid-template-columns: 80px 1fr auto; gap: 12px; align-items: center; }
 .draft-type { font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: .06em; }
