@@ -132,6 +132,23 @@ a { color: #0d9488; }
 .btn-ghost { background: transparent; color: #475569; border: 1px solid #e2e8f0; }
 .btn-ghost:hover { background: #f1f5f9; }
 
+/* Build Mode Toggle Styles */
+#usBuildBtn {
+  color: #ef4444 !important; /* Default: Red */
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  transition: all 0.2s ease;
+  font-weight: 700 !important;
+}
+#usBuildBtn[data-active="true"] {
+  color: #22c55e !important; /* Active: Green */
+  border-color: rgba(34, 197, 148, 0.5) !important;
+  background: rgba(34, 197, 148, 0.1) !important;
+  box-shadow: 0 0 10px rgba(34, 197, 148, 0.2);
+}
+#usBuildBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .drafts-list { display: flex; flex-direction: column; gap: 10px; }
 .draft-item { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; display: grid; grid-template-columns: 80px 1fr auto; gap: 12px; align-items: center; }
 .draft-type { font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: .06em; }
