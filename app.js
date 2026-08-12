@@ -516,7 +516,7 @@ function setPageTheme(themeId) { const p = currentPage(); if (!p) return; p.them
 
 function renderPagesList() {
   const grid = document.getElementById('pages-grid');
-  if (state.pages.length === 0) { grid.innerHTML = '<div class="empty-state pages-empty">No pages yet. Pick a mode above to get started.</div>'; renderStats(); return; }
+  if (state.pages.length === 0) { grid.innerHTML = ''; renderStats(); return; }
   grid.innerHTML = state.pages.map(p => `
     <article class="page-card">
       <div class="page-card-head">
