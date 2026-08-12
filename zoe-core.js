@@ -1945,8 +1945,8 @@ Rules:
     const raw = (text || input.value).trim();
     if (!raw) return;
 
-    // v2.3.5: Build Mode Bridge — if Build Mode is ON, route to build agent
-    if (window.UsBuild && window.UsBuild.enabled) {
+    // v2.3.6: Build Mode Bridge — if Build Mode is ON, route to build agent
+    if (window.UsBuild && typeof window.UsBuild.enabled === 'function' && window.UsBuild.enabled()) {
       window.UsBuild.send(raw);
       input.value = '';
       input.style.height = 'auto';
