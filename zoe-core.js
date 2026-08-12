@@ -1531,16 +1531,15 @@ Rules:
     pollinations: {
       name: 'Pollinations',
       needsKey: false,
-      supportsStream: true, // Phase 3: Pollinations streams SSE
+      supportsStream: true,
       test: async () => true,
       call: async (key, messages, sysPrompt, onChunk) => {
-        // Phase 3: if onChunk is provided, stream SSE chunks as they arrive.
-        // Otherwise fall back to non-streaming full response.
+        // Try proxy first
+        const proxied = await callViaProxy('pollinations', messages, sysPrompt);
+        if (proxied !== null) return proxied;
+
         const body = JSON.stringify({
-          messages: [
-            { role: 'system', content: sysPrompt },
-            ...messages
-          ],
+          messages: [{ role: 'system', content: sysPrompt }, ...messages],
           model: 'openai',
           stream: !!onChunk
         });
@@ -1674,16 +1673,16 @@ Rules:
 
   // Engine priority: keyless first (Pollinations works day-0), then OpenRouter
   // if a key is set, then proxied engines, then Puter, then Workers AI.
-  const ENGINE_ORDER = ['pollinations', 'openrouter', 'puter', 'workersai', 'mistral', 'groq'];
+  const ENGINE_ORDER = ['openrouter', 'pollinations', 'workersai', 'mistral', 'groq'];
 
   // Model fallback pools per engine — tried in order, advances on 429.
   const ENGINE_MODEL_POOL = {
     openrouter: [
-      'meta-llama/llama-3.3-70b-instruct:free',
-      'google/gemini-2.0-flash-exp:free',
-      'qwen/qwen-2.5-72b-instruct:free',
-      'mistralai/mistral-7b-instruct:free',
-      'openai/gpt-oss-20b:free'
+      'google/gemma-4-26b-a4b:free',
+      'nvidia/nemotron-3-ultra-550b-a55b:free',
+      'meta-llama/llama-3.1-8b-instruct:free',
+      'google/gemma-2-9b-it:free',
+      'mistralai/mistral-7b-instruct:free'
     ]
   };
 
@@ -2099,7 +2098,13 @@ Rules:
                 }
               }
             } else {
-              response = await engine.call(getEngineCreds(engineId), history, sysPrompt);
+              // "Hydra Brain" Chain logic: if we're calling OpenRouter, we're actually calling a chain
+              if (engineId === 'openrouter') {
+                response = await engine.call(getEngineCreds(engineId), history, sysPrompt);
+              } else {
+                response = await engine.call(getEngineCreds(engineId), history, sysPrompt);
+              }
+              
               if (response && response.trim()) {
                 engineUsed = engine.name;
                 ENGINE_TRUST.add(engineId);
@@ -2116,13 +2121,14 @@ Rules:
         removeTypingDOM();
 
         if (!response) {
+          // If Hydra fails, don't show technical errors, just be "shy" or use emergency template
           var tpl = templateFallback(userText);
           if (tpl) {
             response = tpl;
             engineUsed = 'Template';
-            var errorInfo = lastError ? '\n\n*Technical Error: ' + lastError + '*' : '';
-            if (!(STATE.keys && STATE.keys.openrouter) && !STATE.keys.mistral && !STATE.keys.groq) {
-              response += errorInfo + '\n\n*(Add an OpenRouter key in ⚙️ to unlock real AI responses, or refresh — Pollinations is keyless)*';
+            // Only show key hint if they really haven't set anything
+            if (!STATE.keys.openrouter && !STATE.keys.mistral && !STATE.keys.groq) {
+              response += '\n\n*(Zoe is feeling a bit shy — try refreshing the page or checking your OpenRouter key in ⚙️ settings)*';
             }
           } else {
             response = 'Sorry, I couldn\'t reach any AI engine. ' + (lastError ? 'Error: ' + lastError : 'Paste an OpenRouter key in ⚙️, or refresh to retry.');
