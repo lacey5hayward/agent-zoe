@@ -16,7 +16,7 @@
 //   snapshotPaths                       -> string[] (the canonical file list)
 
 const DB_NAME = 'us-files-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // v2.3.5: Bump to force re-seeding of new filenames
 const STORE = 'files';
 
 // Canonical file list — these are the files we know about. Anything else
@@ -123,11 +123,9 @@ async function resetAll() {
 // network and store. Best-effort: if a fetch fails (e.g. file:// origin), we
 // skip silently and the user can open the editor for that file from scratch.
 async function seedFromNetwork(paths = SHIPPED_PATHS) {
-  const have = new Set(await list());
-  const missing = paths.filter(p => !have.has(p));
-  if (missing.length === 0) return [];
+  // v2.3.5: Force refresh all shipped paths on first run of this version
   const fetched = [];
-  for (const path of missing) {
+  for (const path of paths) {
     try {
       const res = await fetch(path, { cache: 'no-cache' });
       if (!res.ok) continue;

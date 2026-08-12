@@ -48,13 +48,13 @@ function chatBridge() {
 function guessTargetFile(text) {
   const t = text.toLowerCase();
   if (/\b(html|markup|header|sidebar|button)\b/.test(t)) return 'index.html';
-  if (/\b(css|style|theme|color|background|layout)\b/.test(t)) return 'style.css';
+  if (/\b(css|style|theme|color|background|layout)\b/.test(t)) return 'zoe-style.css';
   if (/\b(readme|docs?|documentation)\b/.test(t)) return 'README.md';
   if (/\b(merge|integration|discord|tumblr)\b/.test(t)) return 'MERGE.md';
   if (/\b(worker|proxy|api)\b/.test(t)) return 'functions/api/proxy/index.js';
-  if (/\b(engine|chat|stream|state|folder)\b/.test(t)) return 'app.js';
-  // Default: pick the file the LLM is most likely to want (app.js, since that's where most logic lives)
-  return 'app.js';
+  if (/\b(engine|chat|stream|state|folder)\b/.test(t)) return 'zoe-core.js';
+  // Default: pick the file the LLM is most likely to want
+  return 'zoe-core.js';
 }
 
 // ---------- Build prompt ----------
@@ -216,7 +216,7 @@ async function send(text) {
     if (Array.isArray(parsed.plan) && parsed.plan.length > 0) {
       const first = parsed.plan[0];
       const remaining = parsed.plan.slice(1);
-      B.postPlanIntro(parsed.plan);
+      postPlanIntro(parsed.plan);
       previewStep(0, parsed.plan, remaining);
       return;
     }

@@ -1242,45 +1242,7 @@ Rules:
 
   // ============== ENGINE DEFINITIONS ==============
   const ENGINES = {
-    openrouter: {
-      name: 'OpenRouter (universal key)',
-      needsKey: true,
-      note: 'One key for Claude, GPT, Gemini, Llama — get at openrouter.ai',
-      test: async (key) => {
-        try {
-          const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
-            headers: { 'Authorization': 'Bearer ' + key }
-          });
-          return res.ok;
-        } catch (e) { return false; }
-      },
-      call: async (key, messages, sysPrompt) => {
-        // "Hydra Brain" Chain: try OpenRouter (with its internal fallbacks), then Pollinations
-        const proxied = await callViaProxy(['openrouter', 'pollinations'], messages, sysPrompt);
-        if (proxied !== null) return proxied;
-        
-        // Manual fallback if proxy is down
-        const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + key,
-            'HTTP-Referer': location.origin,
-            'X-Title': 'Agent Zoe'
-          },
-          body: JSON.stringify({
-            model: 'google/gemma-4-26b-a4b:free',
-            messages: [{ role: 'system', content: sysPrompt }].concat(messages)
-          })
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error((err.error && err.error.message) || 'OpenRouter error');
-        }
-        const data = await res.json();
-        return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
-      }
-    },
+
     gemini: {
       name: 'Gemini',
       needsKey: true,
@@ -1454,32 +1416,27 @@ Rules:
     },
 
     openrouter: {
-      // Phase 13: OpenRouter is the universal multimodal key.
-      // One key → Claude / GPT / Gemini / Llama / Mistral / vision / etc.
-      // Free models at https://openrouter.ai/models?max_price=0
-      // Free $1 credit on signup, then pay-as-you-go.
       name: 'OpenRouter (universal)',
       needsKey: true,
       note: 'Paste one key in ⚙️ → get every frontier model. Get a key at openrouter.ai',
-      modelNames: [
-        'meta-llama/llama-3.3-70b-instruct:free',
-        'google/gemini-2.0-flash-exp:free',
-        'qwen/qwen-2.5-72b-instruct:free',
-        'mistralai/mistral-7b-instruct:free',
-        'openai/gpt-oss-20b:free'
-      ],
       test: async (key) => {
         try {
           const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
-            headers: { 'Authorization': `Bearer ${key}` }
+            headers: { 'Authorization': 'Bearer ' + key }
           });
           return res.ok;
         } catch { return false; }
       },
       call: async (key, messages, sysPrompt) => {
-        const models = (STATE.openrouterModel
-          ? [STATE.openrouterModel, ...ENGINE_MODEL_POOL.openrouter]
-          : ENGINE_MODEL_POOL.openrouter);
+        // v2.3.5: Try proxy first (handles Stealth Mode)
+        const proxied = await callViaProxy(['openrouter', 'pollinations'], messages, sysPrompt);
+        if (proxied !== null) return proxied;
+
+        // Manual fallback if proxy is down or not live
+        // Sanitize model: if it's "Mavis" or empty, use the pool
+        const userModel = (STATE.openrouterModel && STATE.openrouterModel.toLowerCase() !== 'mavis') ? STATE.openrouterModel : null;
+        const models = (userModel ? [userModel, ...ENGINE_MODEL_POOL.openrouter] : ENGINE_MODEL_POOL.openrouter);
+        
         const composed = [
           { role: 'system', content: sysPrompt || 'You are a helpful assistant.' },
           ...messages
@@ -1490,7 +1447,7 @@ Rules:
             const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${key}`,
+                'Authorization': 'Bearer ' + key,
                 'Content-Type': 'application/json',
                 'HTTP-Referer': location.origin,
                 'X-Title': 'Agent Zoe'
@@ -1987,6 +1944,14 @@ Rules:
     const input = $('#usInput');
     const raw = (text || input.value).trim();
     if (!raw) return;
+
+    // v2.3.5: Build Mode Bridge — if Build Mode is ON, route to build agent
+    if (window.UsBuild && window.UsBuild.enabled) {
+      window.UsBuild.send(raw);
+      input.value = '';
+      input.style.height = 'auto';
+      return;
+    }
 
     const userText = raw;
     input.value = '';
@@ -2888,6 +2853,9 @@ Rules:
 
     if (!isLiveSite && !(PROXY_STATUS && PROXY_STATUS.proxyLive)) return null;
     
+    // v2.3.5: Use the ID if it's a string, or the first engine in the chain for logging
+    const primaryEngineId = typeof engineIdOrChain === 'string' ? engineIdOrChain : engineIdOrChain[0];
+
     if (typeof engineIdOrChain === 'string') {
       if (PROXY_STATUS && PROXY_STATUS.engines && PROXY_STATUS.engines[engineIdOrChain] === 'missing' && !localOpenRouterKey) return null;
     }
@@ -2935,7 +2903,7 @@ Rules:
       return data.text || '';
     } catch (e) {
       // Proxy failed — fall through to direct browser call
-      console.log(`Proxy call for ${engineId} failed:`, e.message);
+      console.log(`Proxy call for ${primaryEngineId} failed:`, e.message);
       return null;
     }
   }
