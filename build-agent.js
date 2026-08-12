@@ -187,18 +187,18 @@ async function send(text) {
   // v2.3.9: Post user message IMMEDIATELY so Mom sees it
   B.postUser(trimmed);
   
-  // v2.4.0: Auto-retry tool loading up to 3 times
+  // v2.4.1: Be even more patient for iPad/Safari
   let files = window.UsFiles;
   let attempts = 0;
-  while (!files && attempts < 3) {
+  while ((!files || !files.read) && attempts < 5) {
     await new Promise(r => setTimeout(r, 1000));
     files = window.UsFiles;
     attempts++;
   }
 
-  if (!files) {
+  if (!files || !files.read) {
     B.removeTyping();
-    B.postAI('I hear you, Mom! 💓 My building tools are taking a moment to seed on this device. Please try sending your instruction again in just 2 seconds!', 'Zoe');
+    B.postAI('I hear you, Mom! 💓 My building tools are still sleeping on this device. Try one more time in a few seconds—I\'m trying to wake them up!', 'Zoe');
     B.busy = false;
     return;
   }
