@@ -2113,15 +2113,16 @@ Rules:
         removeTypingDOM();
 
         if (!response) {
-          const tpl = templateFallback(userText);
+          var tpl = templateFallback(userText);
           if (tpl) {
             response = tpl;
             engineUsed = 'Template';
+            var errorInfo = lastError ? '\n\n*Technical Error: ' + lastError + '*' : '';
             if (!(STATE.keys && STATE.keys.openrouter) && !STATE.keys.mistral && !STATE.keys.groq) {
-              response += `\n\n*(Add an OpenRouter key in ⚙️ to unlock real AI responses, or refresh — Pollinations is keyless)*`;
+              response += errorInfo + '\n\n*(Add an OpenRouter key in ⚙️ to unlock real AI responses, or refresh — Pollinations is keyless)*';
             }
           } else {
-            response = `Sorry, I couldn't reach any AI engine. ${lastError ? 'Error: ' + lastError : 'Paste an OpenRouter key in ⚙️, or refresh to retry.'}`;
+            response = 'Sorry, I couldn\'t reach any AI engine. ' + (lastError ? 'Error: ' + lastError : 'Paste an OpenRouter key in ⚙️, or refresh to retry.');
             engineUsed = 'Error';
           }
         }
@@ -2432,6 +2433,34 @@ Rules:
     if ($('#usOpenrouterKey')) $('#usOpenrouterKey').value = (STATE.keys && STATE.keys.openrouter) || '';
     if ($('#usOpenrouterModel')) $('#usOpenrouterModel').value = STATE.openrouterModel || '';
     renderEngineStatuses();
+    
+    // Wire up the Test Brain button
+    var testBtn = $('#usTestBrain');
+    if (testBtn) {
+      testBtn.onclick = function() {
+        testBtn.disabled = true;
+        testBtn.textContent = 'Testing…';
+        fetch('/api/proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            engine: 'openrouter',
+            messages: [{ role: 'user', content: 'Hi' }],
+            sysPrompt: 'Say "Brain Success!"'
+          })
+        }).then(function(r) { return r.json(); })
+          .then(function(data) {
+            var msg = (data && data.text) ? 'Brain Success! Server said: ' + data.text : 'Brain Failed: ' + JSON.stringify(data);
+            alert(msg);
+          }).catch(function(e) {
+            alert('Brain Error: ' + e.message);
+          }).finally(function() {
+            testBtn.disabled = false;
+            testBtn.textContent = 'Test';
+          });
+      };
+    }
+
     // Refresh status in the background each time the modal opens.
     fetchProxyStatus().then(renderEngineStatuses);
     $('#usSettingsModal').classList.add('open');
