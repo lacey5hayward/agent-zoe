@@ -2882,8 +2882,9 @@ Rules:
     // v2.3.3: Check for local keys. If Mom provided a key, we can try to use it 
     // through the proxy (obfuscated) OR just return null to let the direct browser call handle it.
     // However, the proxy is safer for firewalls.
-    const localOpenRouterKey = localStorage.getItem('us-key-openrouter');
-    const localModel = localStorage.getItem('us-openrouter-model');
+    // v2.3.4: Correctly read key from STATE.keys or localStorage
+    const localOpenRouterKey = (STATE.keys && STATE.keys.openrouter) || localStorage.getItem('us-key-openrouter') || '';
+    const localModel = STATE.openrouterModel || localStorage.getItem('us-openrouter-model') || '';
 
     if (!isLiveSite && !(PROXY_STATUS && PROXY_STATUS.proxyLive)) return null;
     
@@ -2906,9 +2907,14 @@ Rules:
       const stealthBtn = document.getElementById('usStealthBtn');
       const isStealth = stealthBtn && stealthBtn.dataset.active === 'true';
 
-      const payloadToSend = isStealth 
-        ? { stealthData: btoa(JSON.stringify(rawBody)) }
-        : rawBody;
+      // v2.3.4: UTF-8 safe base64 encoding for emojis (heart, sparkles, etc.)
+      let payloadToSend = rawBody;
+      if (isStealth) {
+        const jsonStr = JSON.stringify(rawBody);
+        const bytes = new TextEncoder().encode(jsonStr);
+        const binString = Array.from(bytes, (byte) => String.fromCodePoint(byte)).join('');
+        payloadToSend = { stealthData: btoa(binString) };
+      }
 
       // v2.2.0: "iPad Optimized" — increased timeout for mobile Wi-Fi
       const controller = new AbortController();

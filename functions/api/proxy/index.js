@@ -384,7 +384,10 @@ export async function onRequestPost(context) {
     body = await context.request.json(); 
     // v2.3.0: Stealth Mode — decode base64 payload to bypass firewall keyword filters
     if (body && body.stealthData) {
-      const decodedString = atob(body.stealthData);
+      // v2.3.4: UTF-8 safe base64 decode for emojis
+      const binString = atob(body.stealthData);
+      const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0));
+      const decodedString = new TextDecoder().decode(bytes);
       body = JSON.parse(decodedString);
     }
   }

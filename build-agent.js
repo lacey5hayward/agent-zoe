@@ -140,9 +140,13 @@ async function callAI(messages) {
 
     const stealthBtn = document.getElementById('usStealthBtn');
     const isStealth = stealthBtn && stealthBtn.dataset.active === 'true';
-    const payloadToSend = isStealth 
-      ? { stealthData: btoa(JSON.stringify(rawBody)) }
-      : rawBody;
+    let payloadToSend = rawBody;
+    if (isStealth) {
+      const jsonStr = JSON.stringify(rawBody);
+      const bytes = new TextEncoder().encode(jsonStr);
+      const binString = Array.from(bytes, (byte) => String.fromCodePoint(byte)).join('');
+      payloadToSend = { stealthData: btoa(binString) };
+    }
 
     const res = await fetch('/api/proxy', {
       method: 'POST',
