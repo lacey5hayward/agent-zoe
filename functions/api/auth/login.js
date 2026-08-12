@@ -48,9 +48,9 @@ export async function onRequestPost(context) {
     return new Response(null, { headers: CORS });
   }
   const env = context.env || {};
-  const adminUser = env.ADMIN_USERNAME || 'admin';
-  const adminPass = env.ADMIN_PASSWORD || 'agentzoe';
-  const jwtSecret = env.JWT_SECRET || 'dev-secret-change-me';
+  const adminUser = (env.ADMIN_USERNAME || 'admin').trim();
+  const adminPass = (env.ADMIN_PASSWORD || 'agentzoe').trim();
+  const jwtSecret = (env.JWT_SECRET || 'dev-secret-change-me').trim();
 
   let body;
   try { body = await context.request.json(); }
@@ -80,7 +80,7 @@ export async function onRequestPost(context) {
     headers: {
       ...CORS,
       'Content-Type': 'application/json',
-      'Set-Cookie': `zoe_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}${env.ENVIRONMENT === 'production' ? '; Secure' : ''}`
+      'Set-Cookie': `zoe_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}; Secure`
     }
   });
 }

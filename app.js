@@ -34,6 +34,7 @@ const state = {
   campaigns: STORE.get('sh_campaigns', []),
   pages: STORE.get('sh_pages', []).filter(p => p.type !== 'bio'), // drop removed bio pages
   activity: STORE.get('sh_activity', []),
+  activeView: 'dashboard',
   activeType: 'text',
   activeChatChannel: STORE.get('sh_activeChatChannel', 'general'),
   activePageId: STORE.get('sh_activePageId', null),
@@ -69,9 +70,16 @@ function initNav() {
       btn.classList.add('active');
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       document.getElementById('view-' + view).classList.add('active');
+      state.activeView = view;
       if (view === 'pages') restorePageMode();
+      updateLayoutState();
     });
   });
+}
+
+function updateLayoutState() {
+  const isChat = state.activeView === 'composer' && state.activeType === 'chat';
+  document.querySelector('.app').classList.toggle('chat-active', isChat);
 }
 
 function restorePageMode() {
@@ -94,6 +102,7 @@ function initComposer() {
       tab.classList.add('active');
       document.querySelectorAll('.pt-panel').forEach(p => p.classList.remove('active'));
       document.querySelector(`.pt-panel[data-panel="${type}"]`).classList.add('active');
+      updateLayoutState();
     });
   });
   document.getElementById('composer-save').addEventListener('click', saveDraft);

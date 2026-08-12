@@ -133,7 +133,13 @@ const OPENAI_COMPAT = {
   // bedrock: { ... } // not directly callable without SigV4 — see DEPLOY.md
   // Extra OpenAI-compatible providers you can enable by adding their secret:
   // together:  { url: 'https://api.together.xyz/v1/chat/completions',    model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', secret: 'TOGETHER_API_KEY', label: 'Together' },
-  // openrouter: { url: 'https://openrouter.ai/api/v1/chat/completions',  model: 'meta-llama/llama-3.3-70b-instruct:free', secret: 'OPENROUTER_API_KEY', label: 'OpenRouter' },
+  openrouter: {
+    id: 'openrouter',
+    url: 'https://openrouter.ai/api/v1/chat/completions',
+    model: 'meta-llama/llama-3.3-70b-instruct:free',
+    secret: 'OPENROUTER_API_KEY',
+    label: 'OpenRouter'
+  },
   // fireworks:  { url: 'https://api.fireworks.ai/inference/v1/chat/completions', model: 'accounts/fireworks/models/llama-v3p3-70b-instruct', secret: 'FIREWORKS_API_KEY', label: 'Fireworks' },
 };
 
