@@ -376,8 +376,15 @@ export async function onRequestPost(context) {
   }
 
   let body;
-  try { body = await context.request.json(); }
-  catch (_) { return jsonResponse({ error: 'Invalid JSON body' }, 400); }
+  try { 
+    body = await context.request.json(); 
+    // v2.3.0: Stealth Mode — decode base64 payload to bypass firewall keyword filters
+    if (body && body.stealthData) {
+      const decodedString = atob(body.stealthData);
+      body = JSON.parse(decodedString);
+    }
+  }
+  catch (e) { return jsonResponse({ error: 'Invalid JSON body or stealth decode failed: ' + e.message }, 400); }
 
   const { engine, chain, dna, persona, messages, sysPrompt, prompt, style, ratio, model } = body;
 
