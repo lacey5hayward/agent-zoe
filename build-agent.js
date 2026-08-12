@@ -180,11 +180,12 @@ async function callAI(messages) {
 async function send(text) {
   if (B.busy) { if (B.toast) B.toast('Build agent is busy'); return; }
   chatBridge();
-  // v2.3.7: Gracefully fallback or auto-stub if window.UsFiles is slow to load
-  const files = window.UsFiles || {
-    read: async () => '/* stub content */',
-    SHIPPED_PATHS: ['index.html', 'zoe-core.js', 'zoe-style.css']
-  };
+  // v2.3.8: Better tool loading — wait or fail gracefully instead of using a stub
+  const files = window.UsFiles;
+  if (!files) {
+    if (B.toast) B.toast('Zoe is still grabbing her tools... try again in 3 seconds.');
+    return;
+  }
   const trimmed = String(text || '').trim();
   if (!trimmed) return;
   B.busy = true;
