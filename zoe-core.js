@@ -2124,11 +2124,23 @@ Rules:
         removeTypingDOM();
 
         if (!response) {
-          // v2.1.6 EMERGENCY BYPASS: Try Pollinations DIRECTLY in the browser
+          // v2.1.8 EMERGENCY BYPASS: Direct Browser Pollinations
           try {
             updateEngineStatus('Trying Emergency Brain...');
-            response = await ENGINES.pollinations.call(null, history.slice(-1), sysPrompt);
-            if (response) engineUsed = 'Emergency Brain';
+            // Direct fetch bypassing engine.call to avoid recursion/proxy check
+            const res = await fetch('https://text.pollinations.ai/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                messages: [{ role: 'system', content: sysPrompt }, ...history.slice(-1)],
+                model: 'openai'
+              })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              response = data.choices[0].message.content;
+              if (response) engineUsed = 'Emergency Brain';
+            }
           } catch (e) {
             console.warn('Emergency bypass failed:', e);
           }
@@ -2865,24 +2877,31 @@ Rules:
   // Returns the response text if the proxy handled it, or null to fall through.
   async function callViaProxy(engineIdOrChain, messages, sysPrompt) {
     const isLiveSite = location.hostname.indexOf('.pages.dev') !== -1 || location.hostname.indexOf('agent-zoe') !== -1;
-    // If on live site, try proxy regardless of PROXY_STATUS (which might be slow to load)
     if (!isLiveSite && !(PROXY_STATUS && PROXY_STATUS.proxyLive)) return null;
     
-    // If it's a chain, we just send it. If it's a single engine, check if it's live.
     if (typeof engineIdOrChain === 'string') {
       if (PROXY_STATUS && PROXY_STATUS.engines && PROXY_STATUS.engines[engineIdOrChain] === 'missing') return null;
     }
 
+    // v2.1.8: "Whisper Mode" — make history tiny for library firewalls
+    const slimMessages = messages.slice(-2); 
+
     try {
       const body = typeof engineIdOrChain === 'string' 
-        ? { engine: engineIdOrChain, messages, sysPrompt }
-        : { chain: engineIdOrChain, messages, sysPrompt };
+        ? { engine: engineIdOrChain, messages: slimMessages, sysPrompt }
+        : { chain: engineIdOrChain, messages: slimMessages, sysPrompt };
+
+      // v2.1.8: Add a timeout to proxy calls
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       const res = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || `HTTP ${res.status}`);
