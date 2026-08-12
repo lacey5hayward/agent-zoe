@@ -131,19 +131,24 @@ function tryParseJson(text) {
 // ---------- LLM call ----------
 
 async function callAI(messages) {
-  // Try the "Hydra Brain" proxy first (OpenRouter chain -> Pollinations) using Stealth Mode
+  // Try the "Hydra Brain" proxy first using Stealth Mode if toggled
   try {
     const rawBody = {
       chain: ['openrouter', 'pollinations'],
-      messages: messages.slice(1), // user message
-      sysPrompt: messages[0].content // system prompt
+      messages: messages.slice(1),
+      sysPrompt: messages[0].content
     };
-    const stealthPayload = { stealthData: btoa(JSON.stringify(rawBody)) };
+
+    const stealthBtn = document.getElementById('usStealthBtn');
+    const isStealth = stealthBtn && stealthBtn.dataset.active === 'true';
+    const payloadToSend = isStealth 
+      ? { stealthData: btoa(JSON.stringify(rawBody)) }
+      : rawBody;
 
     const res = await fetch('/api/proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(stealthPayload)
+      body: JSON.stringify(payloadToSend)
     });
     if (res.ok) {
       const data = await res.json();
