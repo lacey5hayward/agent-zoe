@@ -2998,6 +2998,11 @@ Rules:
   }
 
   function initZoeFeatures() {
+    // v2.3.9: Connect the Build Agent bridge
+    if (window.UsBuild && window.UsBuild.setBridge) {
+      window.UsBuild.setBridge(window.UsChat);
+    }
+
     // 1a. Sidebar channel switching (kept in case the sidebar is reopened)
     const channels = document.querySelectorAll('.zoe-channel');
     channels.forEach(ch => {

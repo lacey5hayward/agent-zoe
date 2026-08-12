@@ -180,16 +180,21 @@ async function callAI(messages) {
 async function send(text) {
   if (B.busy) { if (B.toast) B.toast('Build agent is busy'); return; }
   chatBridge();
-  // v2.3.8: Better tool loading — wait or fail gracefully instead of using a stub
-  const files = window.UsFiles;
-  if (!files) {
-    if (B.toast) B.toast('Zoe is still grabbing her tools... try again in 3 seconds.');
-    return;
-  }
+  
   const trimmed = String(text || '').trim();
   if (!trimmed) return;
-  B.busy = true;
+
+  // v2.3.9: Post user message IMMEDIATELY so Mom sees it
   B.postUser(trimmed);
+  
+  // v2.3.9: Check for tools AFTER posting message
+  const files = window.UsFiles;
+  if (!files) {
+    B.postAI('I hear you, Mom! 💓 I\'m just grabbing my building tools, give me 3 seconds to get them ready...', 'Zoe');
+    return;
+  }
+
+  B.busy = true;
   B.addTyping();
   try {
     const targetFile = guessTargetFile(trimmed);
