@@ -284,13 +284,7 @@ function applyNext() {
 
 function toggle() {
   B.enabled = !B.enabled;
-  const btn = document.getElementById('usBuildBtn');
-  if (btn) {
-    btn.dataset.active = B.enabled;
-    btn.classList.toggle('us-btn-active', B.enabled);
-  }
-  const app = document.getElementById('usApp');
-  if (app) app.dataset.build = B.enabled ? 'true' : 'false';
+  updateBadge();
   if (B.toast) B.toast(B.enabled ? 'Build mode ON — chat will edit files' : 'Build mode OFF');
 }
 
@@ -299,6 +293,10 @@ function updateBadge() {
   if (btn) {
     btn.dataset.active = B.enabled;
     btn.classList.toggle('us-btn-active', B.enabled);
+    // v2.2.2: Hard-wired color and text for library compatibility
+    btn.style.color = B.enabled ? '#22c55e' : '#ef4444';
+    btn.style.borderColor = B.enabled ? 'rgba(34, 197, 148, 0.5)' : 'rgba(239, 68, 68, 0.3)';
+    btn.textContent = B.enabled ? '🛠️ Build: ON' : '🛠️ Build: OFF';
   }
   const app = document.getElementById('usApp');
   if (app) app.dataset.build = B.enabled ? 'true' : 'false';
