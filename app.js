@@ -1333,7 +1333,7 @@ Rules:
             });
             if (res.ok) {
               const data = await res.json();
-              const text = data.(candidates && candidates[0].content.(parts && parts[0].text;
+              const text = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text);
               if (text) return text;
             }
             lastErr = `HTTP ${res.status}`;
@@ -1378,7 +1378,7 @@ Rules:
           throw new Error(`HTTP ${res.status}: ${err.slice(0, 200)}`);
         }
         const data = await res.json();
-        return data.(choices && choices[0].message.content || '';
+        return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
       }
     },
 
@@ -1415,7 +1415,7 @@ Rules:
           throw new Error(`HTTP ${res.status}: ${err.slice(0, 200)}`);
         }
         const data = await res.json();
-        return data.(choices && choices[0].message.content || '';
+        return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
       }
     },
 
@@ -1452,7 +1452,7 @@ Rules:
           throw new Error(`HTTP ${res.status}: ${err.slice(0, 200)}`);
         }
         const data = await res.json();
-        return data.(choices && choices[0].message.content || '';
+        return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
       }
     },
 
@@ -1507,7 +1507,7 @@ Rules:
             });
             if (res.ok) {
               const data = await res.json();
-              const text = data.(choices && choices[0].message.content || '';
+              const text = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
               if (text) return text;
             } else {
               const body = await res.text().catch(() => '');
@@ -1517,7 +1517,7 @@ Rules:
               }
             }
           } catch (e) {
-            if (e.(message && message.includes)('OpenRouter key invalid')) throw e;
+            if (e.message && e.message.indexOf('OpenRouter key invalid') !== -1) throw e;
             lastErr = e.message;
           }
         }
@@ -1574,7 +1574,7 @@ Rules:
               try {
                 const json = JSON.parse(payload);
                 // Pollinations uses OpenAI-compatible deltas
-                const delta = json.(choices && choices[0].delta.content;
+                const delta = (json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content);
                 if (delta) {
                   full += delta;
                   onChunk(delta, full);
@@ -2048,7 +2048,7 @@ Rules:
             // Phase 4: also allow the engine if the Cloudflare Worker proxy
             // has the matching secret configured (server-side key).
             const proxyLive = (PROXY_STATUS && PROXY_STATUS.proxyLive)
-              && PROXY_STATUS.(engines && engines[engineId] === 'live';
+              && (PROXY_STATUS.engines && PROXY_STATUS.engines[engineId] === 'live');
             if (!proxyLive) continue;
           }
           try {
@@ -2417,7 +2417,7 @@ Rules:
       return;
     }
     list.forEach(id => {
-      const live = PROXY_STATUS.(engines && engines[id] === 'live';
+      const live = (PROXY_STATUS.engines && PROXY_STATUS.engines[id] === 'live');
       setStatusEl(id, live ? '✓ ready' : '✗ secret not set', live ? 'ok' : 'muted');
     });
   }
@@ -2449,7 +2449,7 @@ Rules:
     if ($('#usCfAccountId')) STATE.cfAccountId = $('#usCfAccountId').value.trim();
     if ($('#usCfToken')) STATE.cfToken = $('#usCfToken').value.trim();
     // Phase 13: OpenRouter universal key — stored in localStorage (the user is opting in to a browser-side key)
-    if ($('#usOpenrouterKey')) (STATE.keys && STATE.keys.openrouter) = $('#usOpenrouterKey').value.trim();
+    if ($('#usOpenrouterKey')) STATE.keys.openrouter = $('#usOpenrouterKey').value.trim();
     if ($('#usOpenrouterModel')) STATE.openrouterModel = $('#usOpenrouterModel').value.trim();
     saveState();
     toast('Settings saved', 'success');
@@ -2548,7 +2548,7 @@ Rules:
       Object.assign(STATE, loaded);
       // Phase 13: ensure new fields exist when loading older state
       if (!STATE.keys) STATE.keys = {};
-      if (typeof (STATE.keys && STATE.keys.openrouter) === 'undefined') (STATE.keys && STATE.keys.openrouter) = '';
+      if (typeof STATE.keys.openrouter === 'undefined') STATE.keys.openrouter = '';
     } catch (e) {
       console.warn('Failed to load state:', e);
     }
@@ -2810,7 +2810,7 @@ Rules:
   // Returns the response text if the proxy handled it, or null to fall through.
   async function callViaProxy(engineId, messages, sysPrompt) {
     if (!(PROXY_STATUS && PROXY_STATUS.proxyLive)) return null;
-    if (PROXY_STATUS.(engines && engines[engineId] !== 'live') return null;
+    if (PROXY_STATUS.engines && PROXY_STATUS.engines[engineId] !== 'live') return null;
     try {
       const res = await fetch('/api/proxy', {
         method: 'POST',
