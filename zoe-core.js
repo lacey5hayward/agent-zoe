@@ -2052,10 +2052,14 @@ Rules:
           } else if (engine.needsKey && !STATE.keys[engineId]) {
             // Phase 4: also allow the engine if the Cloudflare Worker proxy
             // has the matching secret configured (server-side key).
+            const isLiveSite = location.hostname.indexOf('.pages.dev') !== -1 || location.hostname.indexOf('agent-zoe') !== -1;
             const proxyLive = (PROXY_STATUS && PROXY_STATUS.proxyLive)
               && (PROXY_STATUS.engines && PROXY_STATUS.engines[engineId] === 'live');
-            if (!proxyLive) continue;
+            if (!proxyLive && !isLiveSite) continue;
           }
+
+          // v2.1.6: If we've already had a failure, try a "lightweight" history
+          const activeHistory = (lastError) ? history.slice(-1) : history;
           try {
             updateEngineStatus(`Calling ${engine.name}...`);
             // Phase 3: streaming path for Pollinations (no key required).
@@ -2101,12 +2105,8 @@ Rules:
                 }
               }
             } else {
-              // "Hydra Brain" Chain logic: if we're calling OpenRouter, we're actually calling a chain
-              if (engineId === 'openrouter') {
-                response = await engine.call(getEngineCreds(engineId), history, sysPrompt);
-              } else {
-                response = await engine.call(getEngineCreds(engineId), history, sysPrompt);
-              }
+              // "Hydra Brain" Chain logic
+              response = await engine.call(getEngineCreds(engineId), activeHistory, sysPrompt);
               
               if (response && response.trim()) {
                 engineUsed = engine.name;
@@ -2122,6 +2122,17 @@ Rules:
         }
 
         removeTypingDOM();
+
+        if (!response) {
+          // v2.1.6 EMERGENCY BYPASS: Try Pollinations DIRECTLY in the browser
+          try {
+            updateEngineStatus('Trying Emergency Brain...');
+            response = await ENGINES.pollinations.call(null, history.slice(-1), sysPrompt);
+            if (response) engineUsed = 'Emergency Brain';
+          } catch (e) {
+            console.warn('Emergency bypass failed:', e);
+          }
+        }
 
         if (!response) {
           // If Hydra fails, don't show technical errors, just be "shy" or use emergency template

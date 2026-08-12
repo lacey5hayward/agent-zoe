@@ -43,8 +43,8 @@ const OPENAI_COMPAT = {
   // This is the engine that lets the merged product work on day 0 with zero setup.
   pollinations: {
     id: 'pollinations',
-    url: 'https://text.pollinations.ai/openai',
-    model: 'openai-fast',
+    url: 'https://text.pollinations.ai/',
+    model: 'openai',
     secret: null,
     label: 'Pollinations (keyless)'
   },
