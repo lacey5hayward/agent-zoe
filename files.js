@@ -23,12 +23,26 @@ const STORE = 'files';
 // stored in IDB is ignored.
 const SHIPPED_PATHS = [
   'index.html',
-  'style.css',
-  'app.js',
+  'zoe-style.css',
+  'zoe-core.js',
   'README.md',
   'MERGE.md',
   'functions/api/proxy/index.js',
-  'functions/api/proxy/status.js'
+  'functions/api/proxy/status.js',
+  'auth.js',
+  'build-agent.js',
+  'files.js',
+  'editor.js',
+  'dna-profiles.js',
+  'clones.js',
+  'clone-state.js',
+  'clone-picker.js',
+  'personas.js',
+  'persona-picker.js',
+  'memory.js',
+  'memory-ui.js',
+  'character-launcher.js',
+  'security-key.js'
 ];
 
 function openDb() {
@@ -79,7 +93,7 @@ async function write(path, content) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite');
-    (tx.objectStore(STORE).put(String(content !== null && tx.objectStore(STORE).put(String(content !== undefined ? tx.objectStore(STORE).put(String(content : ''),) path);
+    tx.objectStore(STORE).put(String(content || ''), path);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });

@@ -235,13 +235,17 @@ function jsonResponse(obj, status = 200) {
 }
 
 // --- Generic OpenAI-compatible caller --------------------------------------
-async function callOpenAICompatible(engineId, { messages, sysPrompt, model }, env) {
+async function callOpenAICompatible(engineId, { messages, sysPrompt, model, localKey }, env) {
   const cfg = OPENAI_COMPAT[engineId];
   const headers = { 'Content-Type': 'application/json' };
-  if (cfg.secret) {
-    const key = env[cfg.secret];
-    if (!key) throw { kind: 'missing-key', engine: engineId, secret: cfg.secret };
+  
+  // v2.3.3: Support localKey override from browser settings
+  const key = localKey || (cfg.secret ? env[cfg.secret] : null);
+  
+  if (key) {
     headers['Authorization'] = `Bearer ${key}`;
+  } else if (cfg.secret) {
+    throw { kind: 'missing-key', engine: engineId, secret: cfg.secret };
   }
   if (typeof cfg.extraHeaders === 'function') {
     Object.assign(headers, cfg.extraHeaders(env));
@@ -283,9 +287,9 @@ async function callOpenAICompatible(engineId, { messages, sysPrompt, model }, en
 }
 
 // --- Special-engine callers ------------------------------------------------
-async function callGemini({ messages, sysPrompt, model }, env) {
+async function callGemini({ messages, sysPrompt, model, localKey }, env) {
   const cfg = SPECIAL.gemini;
-  const key = env[cfg.secret];
+  const key = localKey || env[cfg.secret];
   if (!key) throw { kind: 'missing-key', engine: 'gemini', secret: cfg.secret };
 
   const url = cfg.url({ model }).replace('__KEY__', key);
@@ -386,7 +390,7 @@ export async function onRequestPost(context) {
   }
   catch (e) { return jsonResponse({ error: 'Invalid JSON body or stealth decode failed: ' + e.message }, 400); }
 
-  const { engine, chain, dna, persona, messages, sysPrompt, prompt, style, ratio, model } = body;
+  const { engine, chain, dna, persona, messages, sysPrompt, prompt, style, ratio, model, localKey } = body;
 
   // Compose final system prompt: base + DNA + persona.
   const composedSysPrompt = composeSystemPrompt({ sysPrompt, dna, persona });
@@ -419,7 +423,7 @@ export async function onRequestPost(context) {
   try {
     const result = await callWithFallback(
       engineChain,
-      { messages, sysPrompt: composedSysPrompt, model },
+      { messages, sysPrompt: composedSysPrompt, model, localKey },
       context.env
     );
     return jsonResponse(result);

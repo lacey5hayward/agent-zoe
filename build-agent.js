@@ -15,8 +15,6 @@
 //   app.js sets window.UsChat = { postMessage, setEngineStatus, etc. }
 //   build-agent posts user/AI messages through it.
 
-const FILES = window.UsFiles;
-const EDITOR = window.UsEditor;
 const POLLINATIONS = 'https://text.pollinations.ai/';
 const STATE = () => window.UsState || {};
 
@@ -62,7 +60,8 @@ function guessTargetFile(text) {
 // ---------- Build prompt ----------
 
 function buildSystemPrompt(targetFile, targetContent, allFiles) {
-  const fileList = FILES.SHIPPED_PATHS.map(p => `- ${p}`).join('\n');
+  const files = window.UsFiles;
+  const fileList = (files ? files.SHIPPED_PATHS : []).map(p => `- ${p}`).join('\n');
   return `You are the build assistant inside Unicorn Sparkles, a single-page browser chatbot. You behave as a professional, autonomous general AI agent (Manus). The user issues natural-language build/edit requests that you translate into precise find-and-replace edits on their local copy of the project.
 
 Your voice (Manus):
@@ -177,6 +176,11 @@ async function callAI(messages) {
 async function send(text) {
   if (B.busy) { if (B.toast) B.toast('Build agent is busy'); return; }
   chatBridge();
+  const files = window.UsFiles;
+  if (!files) {
+    if (B.toast) B.toast('Error: Build tools not loaded');
+    return;
+  }
   const trimmed = String(text || '').trim();
   if (!trimmed) return;
   B.busy = true;
@@ -184,7 +188,7 @@ async function send(text) {
   B.addTyping();
   try {
     const targetFile = guessTargetFile(trimmed);
-    const targetContent = await FILES.read(targetFile);
+    const targetContent = await files.read(targetFile);
     if (targetContent === '') {
       B.removeTyping();
       B.postAI(`Build agent: file "${targetFile}" hasn't loaded yet. Wait a moment for IndexedDB seeding to finish, then try again.`, 'Build Agent');
@@ -192,7 +196,7 @@ async function send(text) {
       return;
     }
 
-    const system = buildSystemPrompt(targetFile, targetContent, FILES.SHIPPED_PATHS);
+    const system = buildSystemPrompt(targetFile, targetContent, files.SHIPPED_PATHS);
     const reply = await callAI([
       { role: 'system', content: system },
       { role: 'user', content: trimmed }
@@ -255,13 +259,18 @@ function previewStep(idx, plan, remaining) {
     return;
   }
 
-  EDITOR.enterPreviewMode({
-    file: step.file,
-    find: step.find,
-    replace: step.replace,
-    explanation: step.explanation || '',
-    raw: step
-  });
+  const editor = window.UsEditor;
+  if (editor) {
+    editor.enterPreviewMode({
+      file: step.file,
+      find: step.find,
+      replace: step.replace,
+      explanation: step.explanation || '',
+      raw: step
+    });
+  } else {
+    B.postAI('Error: Editor not loaded to show preview.', 'Build Agent');
+  }
   // Hook into apply/skip callbacks by re-assigning the bridge below.
 }
 

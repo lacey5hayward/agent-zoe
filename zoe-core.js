@@ -1029,42 +1029,36 @@ function mergedBotReply(text) {
     }
   } catch (_) { /* noop — fall back to single-turn */ }
 
-  fetch('/api/proxy', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chain,
-      dna,
-      persona: personaPrompt,
-      messages: conversationHistory,
-      sysPrompt: baseSysPrompt + memoryBlock + personaBlock
-    })
-  })
-    .then(r => {
-      if (!r.ok) throw new Error('proxy HTTP ' + r.status);
-      return r.json();
-    })
-    .then(data => {
-      // Mirror Unicorn's response shape: data.text is the canonical field.
-      const reply = (data && (data.text ||
-                              (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) ||
-                              (data.content && data.content[0] && data.content[0].text))) ||
-                    '[no content from engine]';
-      // Annotate the AI bubble with clone + actual engine used + fallbacks tried.
-      const engineUsed = (data && data.engine) || 'unknown';
-      const usedFallback = (data && data.usedFallback) || [];
+  // v2.3.3: Use the robust callViaProxy helper (handles Stealth Mode + Local Keys)
+  callViaProxy(chain, conversationHistory, baseSysPrompt + memoryBlock + personaBlock)
+    .then(reply => {
+      if (!reply) throw new Error('Engine returned no content');
+      
       // Use clone label if it's not the default generic label
       const displayLabel = (cloneLabel && cloneLabel !== 'Default' && cloneLabel !== 'Unknown') ? cloneLabel : 'Zoe';
-      let footer = displayLabel + ' · via ' + engineUsed;
-      if (usedFallback.length) {
-        footer += ' (after ' + usedFallback.join(', ') + ')';
-      }
+      let footer = displayLabel + ' · via Hydra Brain';
+      
       try { window.UsChat.postAI(reply, footer); } catch (e) { console.warn('[merge] postAI:', e); }
     })
     .catch(err => {
       console.error('[merge] engine call failed:', err);
-      // Surface the error to the chat UI so the user sees it.
-      try { window.UsChat.postAI('[engine error: ' + err.message + ']', 'system'); } catch (_) { /* noop */ }
+      
+      // v2.3.3 Emergency Fallback: If proxy fails, try direct browser call if a key is present
+      const localKey = localStorage.getItem('us-key-openrouter');
+      if (localKey) {
+        updateEngineStatus('Proxy failed, trying direct browser call...');
+        const engine = ENGINES['openrouter'];
+        engine.call(localKey, conversationHistory, baseSysPrompt + memoryBlock + personaBlock)
+          .then(reply => {
+             const displayLabel = (cloneLabel && cloneLabel !== 'Default' && cloneLabel !== 'Unknown') ? cloneLabel : 'Zoe';
+             try { window.UsChat.postAI(reply, displayLabel + ' · via Browser Direct'); } catch (e) {}
+          })
+          .catch(e2 => {
+             try { window.UsChat.postAI('[engine error: ' + e2.message + ']', 'system'); } catch (_) {}
+          });
+      } else {
+        try { window.UsChat.postAI('[engine error: ' + err.message + ']', 'system'); } catch (_) { /* noop */ }
+      }
     })
     .finally(() => {
       try { window.UsChat.removeTyping(); } catch (_) { /* noop */ }
@@ -2587,6 +2581,7 @@ Rules:
         defaultEngine: STATE.defaultEngine,
         tone: STATE.tone,
         enhance: STATE.enhance,
+        openrouterModel: STATE.openrouterModel,
         puterModel: STATE.puterModel,
         workersaiModel: STATE.workersaiModel,
         cfAccountId: STATE.cfAccountId,
@@ -2883,19 +2878,29 @@ Rules:
   // Returns the response text if the proxy handled it, or null to fall through.
   async function callViaProxy(engineIdOrChain, messages, sysPrompt) {
     const isLiveSite = location.hostname.indexOf('.pages.dev') !== -1 || location.hostname.indexOf('agent-zoe') !== -1;
+    
+    // v2.3.3: Check for local keys. If Mom provided a key, we can try to use it 
+    // through the proxy (obfuscated) OR just return null to let the direct browser call handle it.
+    // However, the proxy is safer for firewalls.
+    const localOpenRouterKey = localStorage.getItem('us-key-openrouter');
+    const localModel = localStorage.getItem('us-openrouter-model');
+
     if (!isLiveSite && !(PROXY_STATUS && PROXY_STATUS.proxyLive)) return null;
     
     if (typeof engineIdOrChain === 'string') {
-      if (PROXY_STATUS && PROXY_STATUS.engines && PROXY_STATUS.engines[engineIdOrChain] === 'missing') return null;
+      if (PROXY_STATUS && PROXY_STATUS.engines && PROXY_STATUS.engines[engineIdOrChain] === 'missing' && !localOpenRouterKey) return null;
     }
 
     // v2.1.8: "Whisper Mode" — make history tiny for library firewalls
-    const slimMessages = messages.slice(-2); 
+    const slimMessages = messages.slice(-5); // v2.3.3: slightly more context for iPad
 
     try {
       const rawBody = typeof engineIdOrChain === 'string' 
-        ? { engine: engineIdOrChain, messages: slimMessages, sysPrompt }
-        : { chain: engineIdOrChain, messages: slimMessages, sysPrompt };
+        ? { engine: engineIdOrChain, messages: slimMessages, sysPrompt, model: localModel }
+        : { chain: engineIdOrChain, messages: slimMessages, sysPrompt, model: localModel };
+
+      // If we have a local key, pass it along (the Worker can use it if the secret is missing)
+      if (localOpenRouterKey) rawBody.localKey = localOpenRouterKey;
 
       // v2.3.1: Check if Stealth Mode toggle is active
       const stealthBtn = document.getElementById('usStealthBtn');
