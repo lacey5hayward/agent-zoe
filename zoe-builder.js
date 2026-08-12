@@ -1,5 +1,5 @@
-// Phase 5 + 6: Consolidated Zoe Builder & File Store (v2.4.3)
-// v2.4.3: Fixed global 'STORE' collision and wrapped in IIFE for safety.
+// Phase 5 + 6: Consolidated Zoe Builder & File Store (v2.4.4)
+// v2.4.4: Added missing hooks (onFileSaved, onReimported) to UsBuild export.
 
 (() => {
   'use strict';
@@ -464,6 +464,12 @@ HARD RULES:
     enabled: () => B.enabled,
     onPreviewApplied,
     onPreviewSkipped,
+    onFileSaved: (path, text) => {
+      console.info('[UsBuild] File saved:', path);
+    },
+    onReimported: () => {
+      console.info('[UsBuild] Builder re-imported');
+    },
     updateBadge,
     setBridge: ({ postUser, postAI, setStatus, toast, addTyping, removeTyping }) => {
       B.postUser = postUser;

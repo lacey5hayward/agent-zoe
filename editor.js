@@ -1,12 +1,5 @@
 // Phase 5: Files panel + in-app code editor.
-// Lets the user open any project file, edit it inline, and apply live changes.
-// Lives in the Output Folder sidebar as a "📁 Files" tab.
-//
-// The modal operates in two modes:
-//   view    — manual edit. Buttons: Save / Revert / Close.
-//   preview — AI-proposed edit (from build-agent). Buttons: Apply / Skip / Close.
-//
-// Files tab also offers a snapshot (zip download) and reset.
+// v2.4.4: Fixed syntax errors and updated filenames for consolidated builder.
 
 const FILES = window.UsFiles;
 const LIVE_CSS = window.UsLiveCss;
@@ -50,14 +43,11 @@ function enterViewMode(path, text) {
 }
 
 function enterPreviewMode({ file, find, replace, explanation, raw }) {
-  // Show the proposed edit: original file content with the `find` substring
-  // highlighted via a diff-like header. User can tweak `replace` in the
-  // textarea before clicking Apply.
   E.mode = 'preview';
   E.currentPath = file;
   E.proposed = { find, replace, explanation, raw };
   $('#usEditorPath').textContent = '📝 Proposed edit → ' + file;
-  $('#usEditorTextarea').value = replace; // textarea shows proposed `replace` for tweaking
+  $('#usEditorTextarea').value = replace;
   $('#usEditorTextarea').readOnly = false;
   $('#usEditorPreviewMeta').classList.remove('hidden');
   $('#usEditorPreviewMeta').innerHTML = `
@@ -86,9 +76,7 @@ function closeFile() {
   E.proposed = null;
 }
 
-function setEditorButtonsState() {
-  // Helper kept around for hook symmetry; nothing to do right now.
-}
+function setEditorButtonsState() {}
 
 // ---------- Save / revert ----------
 
@@ -104,7 +92,7 @@ async function saveCurrent() {
   toast('Saved ' + path, 'success');
   await applyLive(path, text);
   rerenderFilesTab();
-  if (BUILD()) (BUILD() && BUILD().onFileSaved(path, text);
+  if (BUILD() && BUILD().onFileSaved) BUILD().onFileSaved(path, text);
 }
 
 async function revertCurrent() {
@@ -133,10 +121,8 @@ async function revertCurrent() {
 async function applyPreview() {
   if (E.mode !== 'preview' || !E.proposed) return;
   const { find, file } = E.proposed;
-  // The user may have tweaked the replacement in the textarea; honor it.
   const replace = $('#usEditorTextarea').value;
   const content = await FILES.read(file);
-  // Find the first occurrence of `find` and replace it.
   const idx = content.indexOf(find);
   if (idx === -1) {
     toast('Find string no longer matches — opening file for manual edit', 'error');
@@ -152,7 +138,7 @@ async function applyPreview() {
   await applyLive(file, updated);
   $('#usEditorModal').classList.remove('open');
   rerenderFilesTab();
-  if (BUILD()) (BUILD() && BUILD().onPreviewApplied({ file, find, replace, explanation: E.proposed.explanation });
+  if (BUILD() && BUILD().onPreviewApplied) BUILD().onPreviewApplied({ file, find, replace, explanation: E.proposed.explanation });
   E.mode = 'view';
   E.proposed = null;
 }
@@ -161,7 +147,7 @@ function skipPreview() {
   if (E.mode !== 'preview' || !E.proposed) return;
   const explanation = E.proposed.explanation || '';
   $('#usEditorModal').classList.remove('open');
-  if (BUILD()) (BUILD() && BUILD().onPreviewSkipped(E.proposed);
+  if (BUILD() && BUILD().onPreviewSkipped) BUILD().onPreviewSkipped(E.proposed);
   E.mode = 'view';
   E.proposed = null;
 }
@@ -170,24 +156,20 @@ function skipPreview() {
 
 async function applyLive(path, content) {
   const name = path.split('/').pop();
-  if (name === 'style.css') {
-    LIVE_CSS.apply(content);
+  if (name === 'zoe-style.css') {
+    if (LIVE_CSS) LIVE_CSS.apply(content);
     toast('CSS applied (no reload needed)', 'success');
     return;
   }
-  if (name === 'app.js') {
-    showReloadNeeded('app.js changed — reload to apply');
+  if (name === 'zoe-core.js' || name === 'index.html') {
+    showReloadNeeded(name + ' changed — reload to apply');
     return;
   }
-  if (name === 'index.html') {
-    showReloadNeeded('index.html changed — reload to apply');
-    return;
-  }
-  if (['files.js', 'live-css.js', 'live-js.js', 'editor.js', 'build-agent.js'].includes(name)) {
+  if (['zoe-builder.js', 'live-css.js', 'live-js.js', 'editor.js'].includes(name)) {
     try {
-      await LIVE_JS.rel('./' + name);
+      if (LIVE_JS) await LIVE_JS.rel('./' + name);
       toast(name + ' re-imported (live)', 'success');
-      if (name === 'build-agent.js' && BUILD()) (BUILD() && BUILD().onReimported();
+      if (name === 'zoe-builder.js' && BUILD() && BUILD().onReimported) BUILD().onReimported();
       return;
     } catch (e) {
       showReloadNeeded(name + ' re-import failed — reload to apply');
@@ -203,8 +185,11 @@ async function applyLive(path, content) {
 
 function showReloadNeeded(msg) {
   const bar = $('#usEditorReload');
-  bar.classList.remove('hidden');
-  bar.querySelector('.us-editor-reload-msg').textContent = msg;
+  if (bar) {
+    bar.classList.remove('hidden');
+    const msgEl = bar.querySelector('.us-editor-reload-msg');
+    if (msgEl) msgEl.textContent = msg;
+  }
 }
 
 // ---------- Files-tab content render ----------
@@ -257,7 +242,7 @@ async function snapshot() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `unicorn-sparkles-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.zip`;
+  a.download = `agent-zoe-snapshot-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.zip`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -269,8 +254,8 @@ async function resetAll() {
   if (!confirm('Reset ALL files to the shipped versions? Local edits are lost.')) return;
   await FILES.resetAll();
   await FILES.seedFromNetwork();
-  const css = await FILES.read('style.css');
-  LIVE_CSS.apply(css);
+  const css = await FILES.read('zoe-style.css');
+  if (LIVE_CSS) LIVE_CSS.apply(css);
   toast('All files reset to shipped versions', 'success');
   rerenderFilesTab();
 }
@@ -279,8 +264,8 @@ async function reseed() {
   if (!confirm('Re-fetch all files from the network and overwrite local edits?')) return;
   await FILES.resetAll();
   await FILES.seedFromNetwork();
-  const css = await FILES.read('style.css');
-  LIVE_CSS.apply(css);
+  const css = await FILES.read('zoe-style.css');
+  if (LIVE_CSS) LIVE_CSS.apply(css);
   toast('Re-seeded from network', 'success');
   rerenderFilesTab();
 }
@@ -292,10 +277,12 @@ function formatBytes(n) {
 }
 
 function escapeHtml(s) {
-  return (String(s !== null && String(s !== undefined ? String(s : '').replace(/[&<>"']/g,) c => ({
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   })[c]);
 }
+
 function escapeAttr(s) {
   return escapeHtml(s);
 }
@@ -334,13 +321,13 @@ function bootstrap() {
   document.addEventListener('input', (e) => {
     if (e.target && e.target.id === 'usEditorTextarea') {
       const ta = e.target;
-      // In view mode, dirty tracks against originalText. In preview, never dirty.
       if (E.mode === 'view') {
         E.dirty = ta.value !== E.originalText;
-        $('#usEditorSave').disabled = !E.dirty;
+        const saveBtn = $('#usEditorSave');
+        if (saveBtn) saveBtn.disabled = !E.dirty;
       } else {
-        // preview: re-enable apply so user can re-submit a tweaked replace
-        $('#usEditorApply').disabled = false;
+        const applyBtn = $('#usEditorApply');
+        if (applyBtn) applyBtn.disabled = false;
       }
     }
   });
@@ -354,20 +341,26 @@ function bootstrap() {
       ta.selectionStart = ta.selectionEnd = start + 2;
       ta.dispatchEvent(new Event('input', { bubbles: true }));
     }
-    if (e.key === 'Escape' && (document.getElementById("usEditorModal") && document.getElementById("usEditorModal").classList).contains('open')) {
+    const modal = document.getElementById("usEditorModal");
+    if (e.key === 'Escape' && modal && modal.classList.contains('open')) {
       closeFile();
     }
   });
 
-  FILES.seedFromNetwork().then(seeded => {
-    if (seeded.length > 0) {
-      console.info('[Phase 5] Seeded', seeded.length, 'files into IndexedDB');
-    }
-    FILES.read('style.css').then(css => {
-      if (css) LIVE_CSS.apply(css);
+  if (FILES) {
+    FILES.seedFromNetwork().then(seeded => {
+      if (seeded.length > 0) {
+        console.info('[Phase 5] Seeded', seeded.length, 'files into IndexedDB');
+      }
+      FILES.read('zoe-style.css').then(css => {
+        if (css && LIVE_CSS) LIVE_CSS.apply(css);
+      });
     });
-  });
+  }
 }
+
+// Global helper for simple selection
+function $(sel) { return document.querySelector(sel); }
 
 window.UsEditor = {
   bootstrap,
