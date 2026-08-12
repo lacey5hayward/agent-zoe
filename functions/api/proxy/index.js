@@ -136,13 +136,16 @@ const OPENAI_COMPAT = {
   openrouter: {
     id: 'openrouter',
     url: 'https://openrouter.ai/api/v1/chat/completions',
-    model: 'meta-llama/llama-3.1-8b-instruct:free',
+    model: 'google/gemma-4-26b-a4b:free',
     secret: 'OPENROUTER_API_KEY',
     label: 'OpenRouter',
     fallbacks: [
+      'nvidia/nemotron-3-ultra-550b-a55b:free',
+      'poolside/laguna-s-2.1:free',
+      'cohere/north-mini-code:free',
+      'meta-llama/llama-3.1-8b-instruct:free',
       'google/gemma-2-9b-it:free',
-      'mistralai/mistral-7b-instruct:free',
-      'huggingfaceh4/zephyr-7b-beta:free'
+      'mistralai/mistral-7b-instruct:free'
     ]
   },
   // fireworks:  { url: 'https://api.fireworks.ai/inference/v1/chat/completions', model: 'accounts/fireworks/models/llama-v3p3-70b-instruct', secret: 'FIREWORKS_API_KEY', label: 'Fireworks' },

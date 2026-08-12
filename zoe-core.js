@@ -1261,8 +1261,11 @@ Rules:
         } catch (e) { return false; }
       },
       call: async (key, messages, sysPrompt) => {
-        const proxied = await callViaProxy('openrouter', messages, sysPrompt);
+        // "Hydra Brain" Chain: try OpenRouter (with its internal fallbacks), then Pollinations
+        const proxied = await callViaProxy(['openrouter', 'pollinations'], messages, sysPrompt);
         if (proxied !== null) return proxied;
+        
+        // Manual fallback if proxy is down
         const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -1272,7 +1275,7 @@ Rules:
             'X-Title': 'Agent Zoe'
           },
           body: JSON.stringify({
-            model: 'meta-llama/llama-3.1-8b-instruct:free',
+            model: 'google/gemma-4-26b-a4b:free',
             messages: [{ role: 'system', content: sysPrompt }].concat(messages)
           })
         });
@@ -1310,7 +1313,7 @@ Rules:
       },
       call: async (key, messages, sysPrompt) => {
         // Phase 4: route through Worker proxy when its secret is configured.
-        const proxied = await callViaProxy('gemini', messages, sysPrompt);
+        const proxied = await callViaProxy(['gemini', 'openrouter', 'pollinations'], messages, sysPrompt);
         if (proxied != null) return proxied;
         // Phase 3: messages is [{role:'user'|'assistant', content:'...'}]
         // Gemini uses 'model' for assistant turns
@@ -2840,14 +2843,23 @@ Rules:
   // Phase 4: when the Cloudflare Worker proxy is live, route Mistral / Groq /
   // DeepSeek / Gemini through it so the user never has to put keys in localStorage.
   // Returns the response text if the proxy handled it, or null to fall through.
-  async function callViaProxy(engineId, messages, sysPrompt) {
+  async function callViaProxy(engineIdOrChain, messages, sysPrompt) {
     if (!(PROXY_STATUS && PROXY_STATUS.proxyLive)) return null;
-    if (PROXY_STATUS.engines && PROXY_STATUS.engines[engineId] !== 'live') return null;
+    
+    // If it's a chain, we just send it. If it's a single engine, check if it's live.
+    if (typeof engineIdOrChain === 'string') {
+      if (PROXY_STATUS.engines && PROXY_STATUS.engines[engineIdOrChain] !== 'live') return null;
+    }
+
     try {
+      const body = typeof engineIdOrChain === 'string' 
+        ? { engine: engineIdOrChain, messages, sysPrompt }
+        : { chain: engineIdOrChain, messages, sysPrompt };
+
       const res = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ engine: engineId, messages, sysPrompt })
+        body: JSON.stringify(body)
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
