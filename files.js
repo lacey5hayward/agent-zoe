@@ -23,7 +23,7 @@ const STORE = 'files';
 // stored in IDB is ignored.
 const SHIPPED_PATHS = [
   'index.html',
-  'styles.css',
+  'style.css',
   'app.js',
   'README.md',
   'MERGE.md',

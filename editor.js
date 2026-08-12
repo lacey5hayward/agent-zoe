@@ -170,7 +170,7 @@ function skipPreview() {
 
 async function applyLive(path, content) {
   const name = path.split('/').pop();
-  if (name === 'styles.css') {
+  if (name === 'style.css') {
     LIVE_CSS.apply(content);
     toast('CSS applied (no reload needed)', 'success');
     return;
@@ -269,7 +269,7 @@ async function resetAll() {
   if (!confirm('Reset ALL files to the shipped versions? Local edits are lost.')) return;
   await FILES.resetAll();
   await FILES.seedFromNetwork();
-  const css = await FILES.read('styles.css');
+  const css = await FILES.read('style.css');
   LIVE_CSS.apply(css);
   toast('All files reset to shipped versions', 'success');
   rerenderFilesTab();
@@ -279,7 +279,7 @@ async function reseed() {
   if (!confirm('Re-fetch all files from the network and overwrite local edits?')) return;
   await FILES.resetAll();
   await FILES.seedFromNetwork();
-  const css = await FILES.read('styles.css');
+  const css = await FILES.read('style.css');
   LIVE_CSS.apply(css);
   toast('Re-seeded from network', 'success');
   rerenderFilesTab();
@@ -363,7 +363,7 @@ function bootstrap() {
     if (seeded.length > 0) {
       console.info('[Phase 5] Seeded', seeded.length, 'files into IndexedDB');
     }
-    FILES.read('styles.css').then(css => {
+    FILES.read('style.css').then(css => {
       if (css) LIVE_CSS.apply(css);
     });
   });

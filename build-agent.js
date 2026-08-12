@@ -50,7 +50,7 @@ function chatBridge() {
 function guessTargetFile(text) {
   const t = text.toLowerCase();
   if (/\b(html|markup|header|sidebar|button)\b/.test(t)) return 'index.html';
-  if (/\b(css|style|theme|color|background|layout)\b/.test(t)) return 'styles.css';
+  if (/\b(css|style|theme|color|background|layout)\b/.test(t)) return 'style.css';
   if (/\b(readme|docs?|documentation)\b/.test(t)) return 'README.md';
   if (/\b(merge|integration|discord|tumblr)\b/.test(t)) return 'MERGE.md';
   if (/\b(worker|proxy|api)\b/.test(t)) return 'functions/api/proxy/index.js';
@@ -63,7 +63,14 @@ function guessTargetFile(text) {
 
 function buildSystemPrompt(targetFile, targetContent, allFiles) {
   const fileList = FILES.SHIPPED_PATHS.map(p => `- ${p}`).join('\n');
-  return `You are the build assistant inside Unicorn Sparkles, a single-page browser chatbot. The user issues natural-language build/edit requests that you translate into precise find-and-replace edits on their local copy of the project.
+  return `You are the build assistant inside Unicorn Sparkles, a single-page browser chatbot. You behave as a professional, autonomous general AI agent (Manus). The user issues natural-language build/edit requests that you translate into precise find-and-replace edits on their local copy of the project.
+
+Your voice (Manus):
+- Professional, academic, and structured.
+- Use complete paragraphs for any explanations.
+- Avoid emoji.
+- Be precise and technical.
+- Focus on efficient, well-crafted solutions.
 
 Available files (you may edit any of these):
 ${fileList}
