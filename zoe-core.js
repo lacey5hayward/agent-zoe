@@ -2124,22 +2124,16 @@ Rules:
         removeTypingDOM();
 
         if (!response) {
-          // v2.1.8 EMERGENCY BYPASS: Direct Browser Pollinations
+          // v2.2.0 EMERGENCY BYPASS: Ultra-Direct Browser Path
           try {
             updateEngineStatus('Trying Emergency Brain...');
-            // Direct fetch bypassing engine.call to avoid recursion/proxy check
-            const res = await fetch('https://text.pollinations.ai/', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                messages: [{ role: 'system', content: sysPrompt }, ...history.slice(-1)],
-                model: 'openai'
-              })
-            });
+            // Try a simpler GET request first if POST is being blocked
+            const emergencyPrompt = (sysPrompt + "\n\nUser: " + userText).slice(0, 2000);
+            const res = await fetch('https://text.pollinations.ai/' + encodeURIComponent(emergencyPrompt) + '?model=openai&json=true');
             if (res.ok) {
               const data = await res.json();
-              response = data.choices[0].message.content;
-              if (response) engineUsed = 'Emergency Brain';
+              response = (typeof data === 'string') ? data : (data.text || data.content || JSON.stringify(data));
+              if (response) engineUsed = 'Emergency Brain (Direct)';
             }
           } catch (e) {
             console.warn('Emergency bypass failed:', e);
@@ -2891,9 +2885,9 @@ Rules:
         ? { engine: engineIdOrChain, messages: slimMessages, sysPrompt }
         : { chain: engineIdOrChain, messages: slimMessages, sysPrompt };
 
-      // v2.1.8: Add a timeout to proxy calls
+      // v2.2.0: "iPad Optimized" — increased timeout for mobile Wi-Fi
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       const res = await fetch('/api/proxy', {
         method: 'POST',
