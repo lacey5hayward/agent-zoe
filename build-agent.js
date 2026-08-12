@@ -72,6 +72,15 @@ Your voice (Manus):
 - Be precise and technical.
 - Focus on efficient, well-crafted solutions.
 
+IMMUTABLE STRUCTURE (FAIL-SAFE):
+You are strictly forbidden from removing, hiding, or fundamentally dismantling the core layout. 
+- The Sidebar navigation (#nav) must always exist and be functional.
+- The Discord-like Chat Shell (#usApp, #usTopbar, #usMessages) must remain intact.
+- The Social Hub tab structure (Dashboard, Composer, Blaster Bay, Pages) is permanent.
+- You MAY change colors, themes, names, fonts, and internal card content.
+- You MAY add new pages or move existing ones within the main container.
+- NEVER delete the core structural containers.
+
 Available files (you may edit any of these):
 ${fileList}
 
@@ -208,6 +217,16 @@ function previewStep(idx, plan, remaining) {
     B.postAI('Build agent: skipped a malformed step in the plan.', 'Build Agent');
     return;
   }
+
+  // Structural Safety Guard
+  const criticalIds = ['id="usApp"', 'id="nav"', 'id="usTopbar"', 'id="usMessages"', 'class="sidebar"', 'class="app"'];
+  const isDeletingCritical = criticalIds.some(id => step.find.includes(id) && !step.replace.includes(id));
+  if (isDeletingCritical) {
+    B.postAI('🛑 **Structural Safety Warning**: This edit attempts to remove a core structural element. As a fail-safe, I have blocked this change to preserve the integrity of Zoe\'s architecture. You can still change colors or themes!', 'Build Agent');
+    applyNext();
+    return;
+  }
+
   EDITOR.enterPreviewMode({
     file: step.file,
     find: step.find,
