@@ -1671,8 +1671,7 @@ Rules:
     }
   };
 
-  // Engine priority: keyless first (Pollinations works day-0), then OpenRouter
-  // if a key is set, then proxied engines, then Puter, then Workers AI.
+  // Engine priority: Hydra Chain (OpenRouter -> Pollinations) first, then Workers AI.
   const ENGINE_ORDER = ['openrouter', 'pollinations', 'workersai', 'mistral', 'groq'];
 
   // Model fallback pools per engine — tried in order, advances on 429.
@@ -2920,7 +2919,7 @@ Rules:
 
     // Phase 4: ask the Worker (if deployed) which engines are live.
     // Show Pollinations-only status until the Worker is in place.
-    updateEngineStatus('Zoe is ready · Pollinations + Puter active');
+    updateEngineStatus('Zoe is ready · Hydra Brain active');
     fetchProxyStatus().then(s => {
       if ((s && s.proxyLive)) {
         const live = Object.values(s.engines || {}).filter(v => v === 'live').length;
