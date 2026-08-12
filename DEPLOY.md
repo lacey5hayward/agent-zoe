@@ -49,7 +49,8 @@
 2. **Set up webhooks** (Discord for notifications).
 3. **Create Cloudflare KV namespace** (`agent-zoe-memory`).
 4. **Deploy to Cloudflare Pages** from GitHub.
-5. **Add API keys** for any of the 9 engines you want (Pollinations works day 0 with zero keys).
+5. **Set auth env vars** (`ADMIN_USERNAME`, `ADMIN_PASSWORD`, `JWT_SECRET`) — Section 5b.
+6. **Add API keys** for any of the 9 engines you want (Pollinations works day 0 with zero keys; OpenRouter universal key is the one-key path).
 
 ---
 
@@ -194,9 +195,71 @@ Cloudflare watches your repo. Every push to `main` redeploys automatically.
 
 ---
 
+## Section 5b — Auth & Login (Phase 13) — **2 min, recommended**
+
+Phase 13 ships a username + password login screen at `/login` and an admin
+panel at `/admin`. Memory is now tied to the logged-in user (cross-device)
+instead of being browser-keyed. Works on the free `*.pages.dev` URL — no
+custom domain needed.
+
+**Set 3 environment variables in Cloudflare Pages:**
+
+1. **Workers & Pages** → `agent-zoe` project
+2. **Settings** → **Environment variables** (left sidebar)
+3. **Add** the following three (do this for both **Production** and
+   **Preview** environments):
+
+| Variable | Value | Notes |
+|---|---|---|
+| `ADMIN_USERNAME` | `admin` | Or whatever username you want |
+| `ADMIN_PASSWORD` | pick a strong one | **CHANGE from default** `agentzoe` |
+| `JWT_SECRET` | any random 32+ char string | e.g. `openssl rand -hex 32` |
+
+4. **Save** → auto-redeploys (~1 min)
+
+After deploy:
+- Visit `https://<your-project>.pages.dev` → you get the login screen
+- Sign in with `admin` / your password
+- Top-right shows your user menu. Click ▾ → 🛡️ **Admin panel** → goes to `/admin`
+- Memory entries now persist under your user, visible from any device when
+  you sign in.
+
+**Default credentials (CHANGE THEM):** username `admin`, password `agentzoe`.
+
+To rotate: change `ADMIN_PASSWORD` in env vars → save → done.
+
+---
+
 ## Section 6 — Add Engine Secrets (5 min per engine)
 
 The Worker has **9 engine slots** in `functions/api/proxy/index.js`:
+
+### 6.0 — OpenRouter Universal Key (Phase 13, recommended) — **2 min, free**
+
+OpenRouter is the **one key that unlocks everything**: Claude, GPT, Gemini,
+Llama, Mistral, vision models — the lot. Free models at $0, free $1 credit
+on signup, then pay-as-you-go. This is the "paste one key, get every model"
+path.
+
+**Where it lives:** browser-side, not in the Worker. The user pastes it
+in the Settings modal (⚙️) → **Universal Multimodal Key (OpenRouter)**.
+Stored in `localStorage` (you opt in — no server sees it).
+
+**Setup:**
+1. Go to https://openrouter.ai and sign up (Google OAuth, 30 sec)
+2. **Keys** → **Create Key** → copy it (starts with `sk-or-v1-…`)
+3. Open your deployed Zoe → ⚙️ Settings → paste the key → **Test** → **Save**
+
+**No env var needed.** Engine is wired directly in `app.js`.
+
+Free models to try first:
+- `meta-llama/llama-3.3-70b-instruct:free`
+- `google/gemini-2.0-flash-exp:free`
+- `qwen/qwen-2.5-72b-instruct:free`
+- `mistralai/mistral-7b-instruct:free`
+- `openai/gpt-oss-20b:free`
+
+(Set a default in ⚙️ → "Default model" field, or leave blank to auto-fall-back.)
 
 ### 6.1 — The 7 Keyless Engines (work day 0, no setup)
 
