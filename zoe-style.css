@@ -1886,23 +1886,14 @@ a:hover { text-decoration: underline; }
   z-index: 999;
 }
 
-/* v2.8.5 Patch C: The Ghost-Glass Shatter — No transparent layers at all */
+/* v2.8.8: Simplified Z-Index Stacking */
 body.us-editor-open .us-modal {
-  background: none !important;
-  backdrop-filter: none !important;
-  pointer-events: none !important; /* Touch passes through the "glass" */
+  z-index: 10000 !important;
 }
 
-body.us-editor-open .us-modal-content {
-  pointer-events: auto !important; /* Only the editor box is solid */
-  box-shadow: 0 0 50px rgba(0,0,0,0.8) !important; /* Strong shadow instead of dimming */
-}
-
-/* Ensure the background app is still visible but non-interactive */
 body.us-editor-open #usApp {
-  pointer-events: none !important;
-  filter: grayscale(0.5);
-  opacity: 0.6;
+  filter: grayscale(0.5) blur(2px);
+  opacity: 0.7;
 }
 
 /* v2.8.5: Force the button to be the ultimate touch target */
@@ -3272,9 +3263,9 @@ body:has(#usEditorModal.open) .character-launcher-fab {
 
 /* ---------- Deploy Button Refinement (v2.6.4) ---------- */
 #usEditorDeploy {
-  /* v2.8.7: Full-Width Force — No transforms, pure positioning */
+  /* v2.8.8: The High-Ground Fix — Moved to top, simplified */
   position: fixed !important;
-  bottom: 20px !important;
+  top: 20px !important;
   left: 20px !important;
   right: 20px !important;
   height: 70px !important;
@@ -3287,7 +3278,7 @@ body:has(#usEditorModal.open) .character-launcher-fab {
   font-weight: 900 !important;
   border-radius: 15px !important;
   border: 4px solid #fff !important;
-  box-shadow: 0 0 40px rgba(0,0,0,0.9) !important;
+  box-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 20px rgba(255, 0, 255, 0.5) !important;
   cursor: pointer !important;
   pointer-events: all !important;
   z-index: 2147483647 !important;

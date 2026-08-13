@@ -66,15 +66,21 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     // v2.8.5 Patch D: Physically move the button to the body to bypass any parent touch-blocking
     document.body.appendChild(deployBtn);
     
-    // v2.8.7: Direct, unblocked binding
-    deployBtn.onclick = (e) => {
+    // v2.8.8: The High-Ground Fix
+    deployBtn.setAttribute('role', 'button');
+    deployBtn.setAttribute('aria-label', 'Deploy to GitHub');
+    
+    const triggerDeploy = (e) => {
+      console.log('[v2.8.8] Deploy triggered by:', e.type);
       e.preventDefault();
       e.stopPropagation();
       toast('🚀 Deploying to GitHub...', 'success');
       deployToGitHub();
     };
-    deployBtn.ontouchstart = deployBtn.onclick;
-    deployBtn.ontouchend = deployBtn.onclick;
+    
+    deployBtn.onclick = triggerDeploy;
+    deployBtn.ontouchstart = triggerDeploy;
+    deployBtn.ontouchend = triggerDeploy;
   }
   if ($('#usEditorSkip')) $('#usEditorSkip').classList.remove('hidden');
   if ($('#usEditorReload')) $('#usEditorReload').classList.add('hidden');
