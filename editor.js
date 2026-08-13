@@ -66,21 +66,15 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     // v2.8.5 Patch D: Physically move the button to the body to bypass any parent touch-blocking
     document.body.appendChild(deployBtn);
     
-    // Remove old listeners to prevent stacking
-    const newBtn = deployBtn.cloneNode(true);
-    deployBtn.parentNode.replaceChild(newBtn, deployBtn);
-    
-    // Add multi-event listeners for iPad Safari
-    const triggerDeploy = (e) => {
+    // v2.8.7: Direct, unblocked binding
+    deployBtn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      toast('Deploying to GitHub...', 'success');
+      toast('🚀 Deploying to GitHub...', 'success');
       deployToGitHub();
     };
-    
-    newBtn.addEventListener('click', triggerDeploy);
-    newBtn.addEventListener('touchstart', triggerDeploy, { passive: false });
-    newBtn.addEventListener('touchend', triggerDeploy, { passive: false });
+    deployBtn.ontouchstart = deployBtn.onclick;
+    deployBtn.ontouchend = deployBtn.onclick;
   }
   if ($('#usEditorSkip')) $('#usEditorSkip').classList.remove('hidden');
   if ($('#usEditorReload')) $('#usEditorReload').classList.add('hidden');

@@ -3272,34 +3272,45 @@ body:has(#usEditorModal.open) .character-launcher-fab {
 
 /* ---------- Deploy Button Refinement (v2.6.4) ---------- */
 #usEditorDeploy {
-  /* v2.8.5 Patch D: Infinite Z-Index & Maximum Touch Priority */
+  /* v2.8.7: Full-Width Force — No transforms, pure positioning */
   position: fixed !important;
-  bottom: 10% !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  background: linear-gradient(135deg, #ff00ff, #6366f1) !important; /* Neon Purple */
+  bottom: 20px !important;
+  left: 20px !important;
+  right: 20px !important;
+  height: 70px !important;
+  background: linear-gradient(135deg, #ff00ff, #6366f1) !important;
   color: #fff !important;
-  padding: 20px 40px !important;
-  font-size: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 22px !important;
   font-weight: 900 !important;
-  border-radius: 50px !important;
+  border-radius: 15px !important;
   border: 4px solid #fff !important;
-  box-shadow: 0 0 30px rgba(255, 0, 255, 0.8), 0 0 60px rgba(99, 102, 241, 0.4) !important;
+  box-shadow: 0 0 40px rgba(0,0,0,0.9) !important;
   cursor: pointer !important;
   pointer-events: all !important;
-  -webkit-tap-highlight-color: transparent !important;
-  z-index: 2147483647 !important; /* Maximum 32-bit signed integer z-index */
-  display: none; /* Controlled by JS */
+  z-index: 2147483647 !important;
   text-transform: uppercase;
   letter-spacing: 2px;
-  animation: deployPulse 1s infinite alternate !important;
   touch-action: manipulation !important;
 }
 
+/* Touch-Target Expansion */
+#usEditorDeploy::after {
+  content: '';
+  position: absolute;
+  top: -20px;
+  bottom: -20px;
+  left: -20px;
+  right: -20px;
+  pointer-events: auto !important;
+}
+
 #usEditorDeploy:active {
-  transform: translateX(-50%) scale(0.9) !important;
   background: #fff !important;
   color: #ff00ff !important;
+  transform: scale(0.98) !important;
 }
 #usEditorDeploy:active {
   transform: scale(0.92) !important;
