@@ -148,12 +148,12 @@ HARD RULES: "find" must be unique. JSON only.`;
 
   async function callAI(messages) {
     let lastError = '';
-    // 1. Try Proxy with 60s timeout (increased for complex builds)
+    // 1. Try Proxy with 90s timeout (Hydra Resilience)
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
       
-      const rawBody = { chain: ['openrouter', 'kilo', 'llm7', 'opencode'], messages: messages.slice(1), sysPrompt: messages[0].content };
+      const rawBody = { chain: ['openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'], messages: messages.slice(1), sysPrompt: messages[0].content };
       const stealthBtn = document.getElementById('usStealthBtn');
       const isStealth = stealthBtn && stealthBtn.dataset.active === 'true';
       let payload = rawBody;
@@ -179,12 +179,12 @@ HARD RULES: "find" must be unique. JSON only.`;
         lastError = `Proxy failed (${res.status}): ${errData.error || 'Unknown'}`;
       }
     } catch (e) { 
-      lastError = `Proxy error: ${e.name === 'AbortError' ? 'Timeout (60s)' : e.message}`;
+      lastError = `Proxy error: ${e.name === 'AbortError' ? 'Timeout (90s)' : e.message}`;
     }
 
-    // 2. Direct Fallback to LLM7 (Better CORS support)
+    // 2. Direct Fallback to OpenCode (Last Resort)
     try {
-      const res = await fetch('https://api.llm7.io/v1/chat/completions', {
+      const res = await fetch('https://opencode.ai/zen/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -198,7 +198,7 @@ HARD RULES: "find" must be unique. JSON only.`;
         return data.choices[0].message.content || '';
       }
       const txt = await res.text().catch(() => '');
-      throw new Error(`LLM7 failed (${res.status}): ${txt.slice(0, 100)}`);
+      throw new Error(`OpenCode failed (${res.status}): ${txt.slice(0, 100)}`);
     } catch (e) {
       throw new Error(`${lastError} | Emergency brain failed: ${e.message}`);
     }

@@ -60,7 +60,7 @@ const OPENAI_COMPAT = {
   llm7: {
     id: 'llm7',
     url: 'https://api.llm7.io/v1/chat/completions',
-    model: 'gpt-4o-mini',
+    model: 'gpt-4o', // Switched from mini to full 4o
     secret: null,
     label: 'LLM7 (keyless)'
   },
