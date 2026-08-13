@@ -1,6 +1,6 @@
 // ============================================================================
 // /api/proxy — Unified AI proxy (Phase 7: generic engine + 429 fallback)
-// v2.7.3: Midnight Final Alignment — Cloud Slimming & Smart Key Detection
+// v2.7.6: Natural Progression — Gemini Only (Hydra Sleeping)
 // ============================================================================
 
 const GITHUB_OWNER = 'lacey5hayward';
@@ -8,6 +8,7 @@ const GITHUB_REPO = 'agent-zoe';
 const GITHUB_BRANCH = 'main';
 
 // --- OpenAI-compatible engine registry --------------------------------------
+// NOTE: All engines are preserved, but only Gemini is active as per Mom's orders.
 const OPENAI_COMPAT = {
   mistral: { id: 'mistral', url: 'https://api.mistral.ai/v1/chat/completions', model: 'mistral-small-latest', secret: 'MISTRAL_API_KEY', label: 'Mistral' },
   groq: { id: 'groq', url: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile', secret: 'GROQ_API_KEY', label: 'Groq' },
@@ -65,26 +66,20 @@ function jsonResponse(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
 }
 
-// v2.7.3: Smart Key Detection (checks Secrets and KV)
+// v2.7.6: Smart Key Detection (checks Secrets and KV)
 async function getSecret(keyName, env) {
-  // 1. Check direct environment secret
   if (env[keyName]) return env[keyName];
-  
-  // 2. Check if MEMORY is a KV namespace and try to get from there
-  if (env.MEMORY && typeof env.MEMORY.get === 'function') {
-    try {
-      const val = await env.MEMORY.get(keyName);
-      if (val) return val;
-      // Fallback: If they saved the key AS the value of MEMORY, we can't easily get it,
-      // but if they put it in the KV under 'MEMORY' or 'API_KEY'...
-      const mem = await env.MEMORY.get('MEMORY');
-      if (mem) return mem;
-    } catch (e) {}
+  if (env.MEMORY) {
+    if (typeof env.MEMORY.get === 'function') {
+      try {
+        const val = await env.MEMORY.get(keyName);
+        if (val) return val;
+        const mem = await env.MEMORY.get('MEMORY');
+        if (mem) return mem;
+      } catch (e) {}
+    }
+    if (typeof env.MEMORY === 'string') return env.MEMORY;
   }
-  
-  // 3. Fallback to just the MEMORY secret if it's a string
-  if (typeof env.MEMORY === 'string') return env.MEMORY;
-  
   return null;
 }
 
@@ -92,17 +87,9 @@ async function callEngine(engineId, payload, env) {
   if (OPENAI_COMPAT[engineId]) {
     const cfg = OPENAI_COMPAT[engineId];
     const headers = { 'Content-Type': 'application/json' };
-    
-    // v2.7.3: Use Smart Key Detection
     let key = payload.localKey || await getSecret(cfg.secret || 'OPENROUTER_API_KEY', env);
-    
-    if (key && key !== 'null' && key !== 'undefined') {
-      headers['Authorization'] = `Bearer ${key}`;
-    }
-
-    if (typeof cfg.extraHeaders === 'function') {
-      Object.assign(headers, cfg.extraHeaders(env));
-    }
+    if (key && key !== 'null' && key !== 'undefined') headers['Authorization'] = `Bearer ${key}`;
+    if (typeof cfg.extraHeaders === 'function') Object.assign(headers, cfg.extraHeaders(env));
 
     const url = cfg.url;
     const models = [payload.model || cfg.model, ...(cfg.fallbacks || [])];
@@ -131,7 +118,6 @@ async function callEngine(engineId, payload, env) {
     let key = payload.localKey || await getSecret('GEMINI_API_KEY', env);
     if (!key) throw { kind: 'missing-key', engine: 'gemini' };
     
-    // v2.7.3: Robust Gemini URL selection
     const versions = ['v1', 'v1beta'];
     let lastErr = null;
     for (const ver of versions) {
@@ -163,21 +149,7 @@ async function callWithFallback(chain, payload, env) {
       if (err.status === 429 || err.status === 402) memoRateLimit(engineId, err.status);
     }
   }
-  
-  // Final Panic Fallback
-  try {
-    const prompt = encodeURIComponent(`${payload.sysPrompt}\n\nUser Request: ${payload.messages[payload.messages.length-1].content}`);
-    const res = await fetch(`https://text.pollinations.ai/${prompt}?model=openai&json=true`);
-    if (res.ok) {
-      const data = await res.json();
-      return { engine: 'pollinations-direct', text: data.choices?.[0]?.text || data.text || '' };
-    }
-  } catch (e) {}
-
-  const e = new Error('All engines failed');
-  e.kind = 'all-failed';
-  e.tried = tried;
-  throw e;
+  throw { kind: 'all-failed', tried };
 }
 
 async function handleBuildRequest(body, env) {
@@ -192,8 +164,7 @@ async function handleBuildRequest(body, env) {
     const fileData = await getRes.json();
     const content = atob(fileData.content.replace(/\n/g, ''));
 
-    // v2.7.3: Cloud-Side Content Slimming
-    // If the file is huge, we only send the relevant parts to the AI to avoid 400/404 errors
+    // v2.7.6: Cloud-Side Slimming
     let slimContent = content;
     if (content.length > 15000) {
       const keywords = instruction.toLowerCase().split(/\s+/).filter(k => k.length > 3);
@@ -211,7 +182,9 @@ async function handleBuildRequest(body, env) {
     }
 
     const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${slimContent}`;
-    const chain = ['gemini', 'openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'];
+    
+    // v2.7.6: Gemini Only (Hydra Sleeping)
+    const chain = ['gemini'];
     
     try {
       const aiRes = await callWithFallback(chain, { messages: [{ role: 'user', content: instruction }], sysPrompt, localKey }, env);
@@ -220,7 +193,7 @@ async function handleBuildRequest(body, env) {
       if (start >= 0 && end > start) text = text.slice(start, end + 1);
       return jsonResponse(JSON.parse(text));
     } catch (aiErr) {
-      return jsonResponse({ error: 'All Cloud AI engines failed', diagnostic: aiErr.tried ? aiErr.tried.map(t => `${t.engine}: ${t.error.status || t.error.kind}`).join(', ') : String(aiErr) }, 502);
+      return jsonResponse({ error: 'Gemini brain failed', diagnostic: aiErr.tried ? aiErr.tried.map(t => `${t.engine}: ${t.error.status || t.error.kind}`).join(', ') : String(aiErr) }, 502);
     }
   } catch (e) { return jsonResponse({ error: 'Cloud build crashed', diagnostic: e.message }, 500); }
 }
@@ -238,10 +211,11 @@ export async function onRequestPost(context) {
   const { engine, chain, dna, persona, messages, sysPrompt, prompt, model, localKey } = body;
   const composedSysPrompt = (sysPrompt || '') + (dna ? `\n\n[DNA]\n${dna}` : '') + (persona ? `\n\n[Persona]\n${persona}` : '');
   try {
-    const chainToUse = Array.isArray(chain) ? ['gemini', 'openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'] : [engine || 'gemini', 'openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'];
+    // v2.7.6: Gemini Only (Hydra Sleeping)
+    const chainToUse = Array.isArray(chain) ? ['gemini'] : [engine || 'gemini'];
     const result = await callWithFallback(chainToUse, { messages, sysPrompt: composedSysPrompt, model, localKey }, context.env);
     return jsonResponse(result);
-  } catch (err) { return jsonResponse({ error: 'All engines failed', details: err }, 502); }
+  } catch (err) { return jsonResponse({ error: 'Gemini brain failed', details: err }, 502); }
 }
 
 export async function onRequestOptions() { return new Response(null, { headers: corsHeaders() }); }
