@@ -91,8 +91,8 @@ async function callEngine(engineId, payload, env) {
     const cfg = SPECIAL.gemini;
     let key = payload.localKey || await getSecret('GEMINI_API_KEY', env);
     if (!key) throw { kind: 'missing-key', engine: 'gemini', message: 'GEMINI_API_KEY not found' };
-    
-    // v2.8.1: Deep Model Discovery — Checking both v1 and v1beta
+
+    // Model discovery keeps Gemini resilient to model renames and API-version changes.
     const versions = ['v1', 'v1beta'];
     for (const ver of versions) {
       try {
@@ -114,7 +114,7 @@ async function callEngine(engineId, payload, env) {
       } catch (e) {}
     }
 
-    // Fallback: OpenRouter Bridge with multiple slugs
+    // OpenRouter remains Gemini's bridge when direct Gemini discovery fails.
     const orKey = payload.localKey || await getSecret('OPENROUTER_API_KEY', env);
     if (orKey) {
       const slugs = ['google/gemini-flash-1.5', 'google/gemini-pro-1.5', 'google/gemini-2.0-flash-exp:free'];
@@ -123,11 +123,11 @@ async function callEngine(engineId, payload, env) {
           const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://agent-zoe.pages.dev', 'X-Title': 'Agent Zoe' },
-            body: JSON.stringify({ model: slug, messages: [{ role: 'system', content: payload.sysPrompt }, ...payload.messages], temperature: 0.7 })
+            body: JSON.stringify({ model: slug, messages: [{ role: 'system', content: payload.sysPrompt }, ...(payload.messages || [])], temperature: 0.7 })
           });
           if (res.ok) {
             const data = await res.json();
-            return { engine: 'gemini', text: data.choices[0].message.content, modelUsed: slug, source: 'openrouter-bridge' };
+            return { engine: 'gemini', text: data.choices?.[0]?.message?.content || '', modelUsed: slug, source: 'openrouter-bridge' };
           }
         } catch (e) {}
       }
@@ -135,8 +135,40 @@ async function callEngine(engineId, payload, env) {
 
     throw { kind: 'all-attempts-failed', engine: 'gemini', message: 'Direct and Bridge attempts failed' };
   }
+
+  const cfg = OPENAI_COMPAT[engineId];
+  if (cfg) {
+    const key = await getSecret(cfg.secret, env);
+    if (!key) throw { kind: 'missing-key', engine: engineId, message: `${cfg.secret} not found` };
+
+    const messages = [];
+    if (payload.sysPrompt) messages.push({ role: 'system', content: payload.sysPrompt });
+    messages.push(...(payload.messages || []));
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`,
+      ...(cfg.extraHeaders ? cfg.extraHeaders() : {})
+    };
+    const res = await fetch(cfg.url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ model: cfg.model, messages, temperature: 0.7, max_tokens: 2048 })
+    });
+    const raw = await res.text();
+    let data;
+    try { data = raw ? JSON.parse(raw) : {}; } catch (_) { data = { raw }; }
+    if (!res.ok) {
+      if (res.status === 429 || res.status === 402) memoRateLimit(engineId, res.status);
+      throw { kind: 'http', engine: engineId, status: res.status, message: data?.error?.message || data?.message || raw.slice(0, 300) };
+    }
+    const content = data.choices?.[0]?.message?.content;
+    const text = Array.isArray(content) ? content.map(part => part.text || '').join('') : (content || data.text || '');
+    if (!text) throw { kind: 'empty-response', engine: engineId, message: 'Provider returned no text' };
+    return { engine: engineId, label: cfg.label, text, modelUsed: cfg.model };
+  }
+
   throw { kind: 'unknown-engine', engine: engineId };
-}
+} 
 
 async function callWithFallback(chain, payload, env) {
   const tried = [];
@@ -164,7 +196,8 @@ async function handleBuildRequest(body, env) {
     const content = atob(fileData.content.replace(/\n/g, ''));
 
     const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${content.slice(0, 10000)}`;
-    const chain = ['gemini'];
+    // v2.9.1: Build Mode uses the full guarded Hydra chain; missing secrets are skipped.
+    const chain = ['gemini', 'openrouter', 'cerebras', 'sambanova', 'cohere', 'together', 'fireworks', 'nvidia'];
     
     try {
       const aiRes = await callWithFallback(chain, { messages: [{ role: 'user', content: instruction }], sysPrompt, localKey }, env);
@@ -202,10 +235,10 @@ export async function onRequestPost(context) {
   const { engine, chain, dna, persona, messages, sysPrompt, prompt, localKey } = body;
   const composedSysPrompt = (sysPrompt || '') + (dna ? `\n\n[DNA]\n${dna}` : '') + (persona ? `\n\n[Persona]\n${persona}` : '');
   try {
-    const chainToUse = Array.isArray(chain) ? ['gemini'] : [engine || 'gemini'];
+    const chainToUse = Array.isArray(chain) && chain.length ? chain : [engine || 'gemini'];
     const result = await callWithFallback(chainToUse, { messages, sysPrompt: composedSysPrompt, localKey }, context.env);
     return jsonResponse(result);
-  } catch (err) { return jsonResponse({ error: 'Gemini brain failed', details: err }, 502); }
+  } catch (err) { return jsonResponse({ error: 'AI chain failed', details: err }, 502); }
 }
 
 export async function onRequestOptions() { return new Response(null, { headers: corsHeaders() }); }

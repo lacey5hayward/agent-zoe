@@ -1126,7 +1126,14 @@ document.addEventListener('DOMContentLoaded', hideLegacyChatPanel);
       deepseek: '',
       mistral: '',
       huggingface: '',
-      openrouter: ''     // Phase 13: universal multimodal key — opens every model
+      openrouter: '',     // Phase 13: universal multimodal key — opens every model
+      cerebras: '',
+      sambanova: '',
+      cohere: '',
+      together: '',
+      fireworks: '',
+      nvidia: ''
+      
     },
     defaultEngine: 'auto',
     tone: 'professional',
@@ -1241,6 +1248,31 @@ Rules:
   };
 
   // ============== ENGINE DEFINITIONS ==============
+  // v2.9.1: Generic OpenAI-compatible proxy heads. The Worker is preferred;
+  // direct browser fallback is retained for environments where the user has
+  // explicitly supplied a provider key and the provider permits browser CORS.
+  function makeProxyEngine(id, name, url, model, note) {
+    return {
+      name,
+      needsKey: true,
+      note,
+      test: async (key) => Boolean(key),
+      call: async (key, messages, sysPrompt) => {
+        const proxied = await callViaProxy(id, messages, sysPrompt);
+        if (proxied != null) return proxied;
+        if (!key) throw new Error(`${name} key is not configured`);
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+          body: JSON.stringify({ model, messages: [{ role: 'system', content: sysPrompt }, ...messages], temperature: 0.7, max_tokens: 2048 })
+        });
+        if (!res.ok) throw new Error(`${name} HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+        const data = await res.json();
+        return data.choices?.[0]?.message?.content || data.text || '';
+      }
+    };
+  }
+
   const ENGINES = {
 
     gemini: {
@@ -1414,6 +1446,13 @@ Rules:
         return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
       }
     },
+
+    cerebras: makeProxyEngine('cerebras', 'Cerebras', 'https://api.cerebras.ai/v1/chat/completions', 'llama3.1-70b', 'Free-tier key at cloud.cerebras.ai'),
+    sambanova: makeProxyEngine('sambanova', 'SambaNova', 'https://api.sambanova.ai/v1/chat/completions', 'Meta-Llama-3.1-8B-Instruct', 'Developer/free-tier key at cloud.sambanova.ai'),
+    cohere: makeProxyEngine('cohere', 'Cohere Command', 'https://api.cohere.com/compatibility/v1/chat/completions', 'command-r-plus', 'Developer key at dashboard.cohere.com'),
+    together: makeProxyEngine('together', 'Together AI', 'https://api.together.xyz/v1/chat/completions', 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo', 'Free credits or account tier at api.together.ai'),
+    fireworks: makeProxyEngine('fireworks', 'Fireworks AI', 'https://api.fireworks.ai/inference/v1/chat/completions', 'accounts/fireworks/models/llama-v3-70b-instruct', 'Free credits or account tier at fireworks.ai'),
+    nvidia: makeProxyEngine('nvidia', 'NVIDIA NIM', 'https://integrate.api.nvidia.com/v1/chat/completions', 'meta/llama-3.1-70b-instruct', 'Developer key at build.nvidia.com'),
 
     openrouter: {
       name: 'OpenRouter (universal)',
@@ -2569,7 +2608,9 @@ Rules:
       Object.assign(STATE, loaded);
       // Phase 13: ensure new fields exist when loading older state
       if (!STATE.keys) STATE.keys = {};
-      if (typeof STATE.keys.openrouter === 'undefined') STATE.keys.openrouter = '';
+      ['openrouter', 'cerebras', 'sambanova', 'cohere', 'together', 'fireworks', 'nvidia'].forEach(function(id) {
+        if (typeof STATE.keys[id] === 'undefined') STATE.keys[id] = '';
+      });
     } catch (e) {
       console.warn('Failed to load state:', e);
     }
