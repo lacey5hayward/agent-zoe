@@ -147,10 +147,11 @@ HARD RULES: "find" must be unique. JSON only.`;
   }
 
   async function callAI(messages) {
-    // Turbo Bypass: 5-second timeout for proxy
+    let lastError = '';
+    // 1. Try Proxy with 20s timeout (increased for complex builds)
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
       
       const rawBody = { chain: ['openrouter', 'pollinations'], messages: messages.slice(1), sysPrompt: messages[0].content };
       const stealthBtn = document.getElementById('usStealthBtn');
@@ -159,7 +160,7 @@ HARD RULES: "find" must be unique. JSON only.`;
       if (isStealth) {
         const jsonStr = JSON.stringify(rawBody);
         const bytes = new TextEncoder().encode(jsonStr);
-        const binString = Array.from(bytes, (byte) => String.fromCodePoint(byte)).join('');
+        const binString = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
         payload = { stealthData: btoa(binString) };
       }
       
@@ -173,17 +174,27 @@ HARD RULES: "find" must be unique. JSON only.`;
       if (res.ok) {
         const data = await res.json();
         return data.text || '';
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        lastError = `Proxy failed (${res.status}): ${errData.error || 'Unknown'}`;
       }
-    } catch (e) { console.warn('Proxy timed out or failed, bypassing to emergency brain...'); }
+    } catch (e) { 
+      lastError = `Proxy error: ${e.name === 'AbortError' ? 'Timeout (20s)' : e.message}`;
+    }
 
-    // Direct Fallback
-    const res = await fetch(POLLINATIONS, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, model: 'openai', stream: false })
-    });
-    if (!res.ok) throw new Error('AI Engine failed');
-    return await res.text();
+    // 2. Direct Fallback to Pollinations
+    try {
+      const res = await fetch(POLLINATIONS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages, model: 'openai', stream: false })
+      });
+      if (res.ok) return await res.text();
+      const txt = await res.text().catch(() => '');
+      throw new Error(`Pollinations failed (${res.status}): ${txt.slice(0, 100)}`);
+    } catch (e) {
+      throw new Error(`${lastError} | Emergency brain failed: ${e.message}`);
+    }
   }
 
   async function send(text) {
