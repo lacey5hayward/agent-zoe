@@ -2530,6 +2530,29 @@ Rules:
     });
 
     renderEngineStatuses();
+
+    var copyAllBtn = $('#usCopyAllKeys');
+    if (copyAllBtn) {
+      copyAllBtn.onclick = function() {
+        var summary = [];
+        keyIds.forEach(function(id) {
+          var el = $('#us' + id.charAt(0).toUpperCase() + id.slice(1) + 'Key');
+          if (el && el.value.trim()) {
+            summary.push(id.toUpperCase() + '_API_KEY=' + el.value.trim());
+          }
+        });
+        var text = summary.join('\n');
+        if (!text) {
+          alert('No keys found in boxes yet!');
+          return;
+        }
+        navigator.clipboard.writeText(text).then(function() {
+          alert('✓ Copied all keys to clipboard!\n\nYou can now paste them into Cloudflare Secrets.');
+        }).catch(function() {
+          prompt('Copy your keys below:', text);
+        });
+      };
+    }
     
     // Wire up the Test Brain button
     var testBtn = $('#usTestBrain');
