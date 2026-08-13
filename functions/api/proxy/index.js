@@ -1,6 +1,6 @@
 // ============================================================================
 // /api/proxy — Unified AI proxy (Phase 7: generic engine + 429 fallback)
-// v2.7.6: Natural Progression — Gemini Only (Hydra Sleeping)
+// v2.7.7: Deep Gemini Diagnostics — Revealing the 404 Ghost
 // ============================================================================
 
 const GITHUB_OWNER = 'lacey5hayward';
@@ -8,7 +8,6 @@ const GITHUB_REPO = 'agent-zoe';
 const GITHUB_BRANCH = 'main';
 
 // --- OpenAI-compatible engine registry --------------------------------------
-// NOTE: All engines are preserved, but only Gemini is active as per Mom's orders.
 const OPENAI_COMPAT = {
   mistral: { id: 'mistral', url: 'https://api.mistral.ai/v1/chat/completions', model: 'mistral-small-latest', secret: 'MISTRAL_API_KEY', label: 'Mistral' },
   groq: { id: 'groq', url: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile', secret: 'GROQ_API_KEY', label: 'Groq' },
@@ -66,7 +65,6 @@ function jsonResponse(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
 }
 
-// v2.7.6: Smart Key Detection (checks Secrets and KV)
 async function getSecret(keyName, env) {
   if (env[keyName]) return env[keyName];
   if (env.MEMORY) {
@@ -84,39 +82,10 @@ async function getSecret(keyName, env) {
 }
 
 async function callEngine(engineId, payload, env) {
-  if (OPENAI_COMPAT[engineId]) {
-    const cfg = OPENAI_COMPAT[engineId];
-    const headers = { 'Content-Type': 'application/json' };
-    let key = payload.localKey || await getSecret(cfg.secret || 'OPENROUTER_API_KEY', env);
-    if (key && key !== 'null' && key !== 'undefined') headers['Authorization'] = `Bearer ${key}`;
-    if (typeof cfg.extraHeaders === 'function') Object.assign(headers, cfg.extraHeaders(env));
-
-    const url = cfg.url;
-    const models = [payload.model || cfg.model, ...(cfg.fallbacks || [])];
-    let lastErr = null;
-    for (const m of models) {
-      try {
-        const res = await fetch(url, {
-          method: 'POST', headers,
-          body: JSON.stringify({ model: m, messages: [{ role: 'system', content: payload.sysPrompt }, ...payload.messages], temperature: 0.7, max_tokens: 2048 })
-        });
-        if (!res.ok) {
-          const body = await res.text().catch(() => 'No body');
-          throw { kind: 'http', status: res.status, body: body.slice(0, 300) };
-        }
-        const data = await res.json();
-        const text = data.choices?.[0]?.message?.content;
-        if (!text) throw { kind: 'empty', engine: engineId };
-        return { engine: engineId, text: text, modelUsed: m };
-      } catch (e) { lastErr = e; }
-    }
-    throw lastErr;
-  }
-  
   if (engineId === 'gemini') {
     const cfg = SPECIAL.gemini;
     let key = payload.localKey || await getSecret('GEMINI_API_KEY', env);
-    if (!key) throw { kind: 'missing-key', engine: 'gemini' };
+    if (!key) throw { kind: 'missing-key', engine: 'gemini', message: 'GEMINI_API_KEY secret not found in Cloudflare Environment or KV' };
     
     const versions = ['v1', 'v1beta'];
     let lastErr = null;
@@ -124,13 +93,13 @@ async function callEngine(engineId, payload, env) {
       try {
         const url = `https://generativelanguage.googleapis.com/${ver}/models/${payload.model || 'gemini-1.5-flash'}:generateContent?key=${key}`;
         const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg.formatBody(payload)) });
+        const errBody = await res.text().catch(() => 'No body');
         if (res.ok) {
-          const data = await res.json();
+          let data;
+          try { data = JSON.parse(errBody); } catch (e) { throw { kind: 'json-parse', body: errBody }; }
           return { engine: 'gemini', text: cfg.extractText(data), verUsed: ver };
         }
-        const errBody = await res.text().catch(() => 'No body');
-        if (res.status !== 404) throw { kind: 'http', status: res.status, body: errBody.slice(0, 300) };
-        lastErr = { kind: 'http', status: res.status, body: errBody.slice(0, 300) };
+        lastErr = { kind: 'http', status: res.status, body: errBody.slice(0, 500) };
       } catch (e) { lastErr = e; }
     }
     throw lastErr;
@@ -146,7 +115,6 @@ async function callWithFallback(chain, payload, env) {
       return await callEngine(engineId, payload, env);
     } catch (err) {
       tried.push({ engine: engineId, error: err });
-      if (err.status === 429 || err.status === 402) memoRateLimit(engineId, err.status);
     }
   }
   throw { kind: 'all-failed', tried };
@@ -164,7 +132,7 @@ async function handleBuildRequest(body, env) {
     const fileData = await getRes.json();
     const content = atob(fileData.content.replace(/\n/g, ''));
 
-    // v2.7.6: Cloud-Side Slimming
+    // Cloud Slimming
     let slimContent = content;
     if (content.length > 15000) {
       const keywords = instruction.toLowerCase().split(/\s+/).filter(k => k.length > 3);
@@ -183,7 +151,7 @@ async function handleBuildRequest(body, env) {
 
     const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${slimContent}`;
     
-    // v2.7.6: Gemini Only (Hydra Sleeping)
+    // v2.7.7: Gemini Only (Hydra Sleeping)
     const chain = ['gemini'];
     
     try {
@@ -193,7 +161,8 @@ async function handleBuildRequest(body, env) {
       if (start >= 0 && end > start) text = text.slice(start, end + 1);
       return jsonResponse(JSON.parse(text));
     } catch (aiErr) {
-      return jsonResponse({ error: 'Gemini brain failed', diagnostic: aiErr.tried ? aiErr.tried.map(t => `${t.engine}: ${t.error.status || t.error.kind}`).join(', ') : String(aiErr) }, 502);
+      const diag = aiErr.tried ? aiErr.tried.map(t => `${t.engine}: [status=${t.error.status || t.error.kind}] ${t.error.body || t.error.message || JSON.stringify(t.error)}`).join(' | ') : String(aiErr);
+      return jsonResponse({ error: 'Gemini brain failed with deep diagnostic', diagnostic: diag }, 502);
     }
   } catch (e) { return jsonResponse({ error: 'Cloud build crashed', diagnostic: e.message }, 500); }
 }
@@ -211,7 +180,6 @@ export async function onRequestPost(context) {
   const { engine, chain, dna, persona, messages, sysPrompt, prompt, model, localKey } = body;
   const composedSysPrompt = (sysPrompt || '') + (dna ? `\n\n[DNA]\n${dna}` : '') + (persona ? `\n\n[Persona]\n${persona}` : '');
   try {
-    // v2.7.6: Gemini Only (Hydra Sleeping)
     const chainToUse = Array.isArray(chain) ? ['gemini'] : [engine || 'gemini'];
     const result = await callWithFallback(chainToUse, { messages, sysPrompt: composedSysPrompt, model, localKey }, context.env);
     return jsonResponse(result);
