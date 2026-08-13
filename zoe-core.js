@@ -2465,12 +2465,31 @@ Rules:
     if ($('#usOpenrouterKey')) $('#usOpenrouterKey').value = (STATE.keys && STATE.keys.openrouter) || '';
     if ($('#usOpenrouterModel')) $('#usOpenrouterModel').value = STATE.openrouterModel || '';
 
-    // v2.9.2: Direct Key Drop Boxes
-    if ($('#usGeminiKey')) $('#usGeminiKey').value = (STATE.keys && STATE.keys.gemini) || '';
-    if ($('#usGroqKey')) $('#usGroqKey').value = (STATE.keys && STATE.keys.groq) || '';
-    if ($('#usDeepseekKey')) $('#usDeepseekKey').value = (STATE.keys && STATE.keys.deepseek) || '';
-    if ($('#usMistralKey')) $('#usMistralKey').value = (STATE.keys && STATE.keys.mistral) || '';
-    if ($('#usHuggingfaceKey')) $('#usHuggingfaceKey').value = (STATE.keys && STATE.keys.huggingface) || '';
+    // v2.9.3: Master Key Vault for all 11 providers
+    var keyIds = ['gemini', 'groq', 'deepseek', 'mistral', 'huggingface', 'cerebras', 'sambanova', 'cohere', 'together', 'fireworks', 'nvidia'];
+    keyIds.forEach(function(id) {
+      var el = $('#us' + id.charAt(0).toUpperCase() + id.slice(1) + 'Key');
+      if (el) el.value = (STATE.keys && STATE.keys[id]) || '';
+      var testBtn = $('#usTest' + id.charAt(0).toUpperCase() + id.slice(1) + 'Btn');
+      if (testBtn) {
+        testBtn.onclick = function() {
+          var val = el ? el.value.trim() : '';
+          if (!val) { alert('Please enter a key first!'); return; }
+          testBtn.disabled = true;
+          testBtn.textContent = '…';
+          var engine = ENGINES[id];
+          var testFn = engine && engine.test ? engine.test : async function(k) { return Boolean(k); };
+          testFn(val).then(function(ok) {
+            alert(ok ? '✓ ' + (engine ? engine.name : id) + ' Key is VALID!' : '✗ Key validation failed');
+          }).catch(function(err) {
+            alert('Error: ' + err.message);
+          }).finally(function() {
+            testBtn.disabled = false;
+            testBtn.textContent = 'Test';
+          });
+        };
+      }
+    });
 
     renderEngineStatuses();
     
@@ -2521,12 +2540,12 @@ Rules:
     if ($('#usOpenrouterKey')) STATE.keys.openrouter = $('#usOpenrouterKey').value.trim();
     if ($('#usOpenrouterModel')) STATE.openrouterModel = $('#usOpenrouterModel').value.trim();
 
-    // v2.9.2: Direct Key Drop Boxes
-    if ($('#usGeminiKey')) STATE.keys.gemini = $('#usGeminiKey').value.trim();
-    if ($('#usGroqKey')) STATE.keys.groq = $('#usGroqKey').value.trim();
-    if ($('#usDeepseekKey')) STATE.keys.deepseek = $('#usDeepseekKey').value.trim();
-    if ($('#usMistralKey')) STATE.keys.mistral = $('#usMistralKey').value.trim();
-    if ($('#usHuggingfaceKey')) STATE.keys.huggingface = $('#usHuggingfaceKey').value.trim();
+    // v2.9.3: Master Key Vault for all 11 providers
+    var keyIds = ['gemini', 'groq', 'deepseek', 'mistral', 'huggingface', 'cerebras', 'sambanova', 'cohere', 'together', 'fireworks', 'nvidia'];
+    keyIds.forEach(function(id) {
+      var el = $('#us' + id.charAt(0).toUpperCase() + id.slice(1) + 'Key');
+      if (el) STATE.keys[id] = el.value.trim();
+    });
 
     saveState();
     toast('Settings saved', 'success');
