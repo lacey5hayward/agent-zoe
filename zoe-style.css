@@ -1896,11 +1896,38 @@ body.us-editor-open #usApp {
   opacity: 0.7;
 }
 
-/* v2.8.5: Force the button to be the ultimate touch target */
+/* v2.9.9: The Native Force — Standard HTML Button for iPad Safari */
 #usEditorDeploy {
+  position: fixed !important;
+  bottom: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 90vw !important;
+  max-width: 500px !important;
+  height: 80px !important;
+  z-index: 2147483647 !important;
+  background: #a855f7 !important;
+  color: white !important;
+  font-weight: 800 !important;
+  font-size: 22px !important;
+  display: none;
+  border: 5px solid #fff !important;
+  border-radius: 16px !important;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.6) !important;
   pointer-events: all !important;
   cursor: pointer !important;
   touch-action: manipulation !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  text-align: center !important;
+  line-height: 70px !important;
+}
+
+#usEditorDeploy:active {
+  background: #fff !important;
+  color: #a855f7 !important;
+  transform: translateX(-50%) translateY(5px) !important;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.4) !important;
 }
 
 #usEditorModal.open ~ *,

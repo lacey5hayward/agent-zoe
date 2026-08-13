@@ -66,31 +66,36 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     // v2.8.5 Patch D: Physically move the button to the body to bypass any parent touch-blocking
     document.body.appendChild(deployBtn);
     
-    // v2.8.9: The Global Interceptor
+    // v2.9.9: The Native Force — Simplified and Aggressive Event Binding
     deployBtn.setAttribute('role', 'button');
     deployBtn.setAttribute('aria-label', 'Deploy to GitHub');
     
     const triggerDeploy = (e) => {
-      console.log('[v2.8.9] Deploy triggered by:', e.type);
-      if (deployBtn.disabled) return;
+      console.log('[v2.9.9] DEPLOY SIGNAL RECEIVED:', e.type);
+      if (deployBtn.disabled) {
+        console.warn('[v2.9.9] Deploy blocked: Button is disabled');
+        return;
+      }
+      
+      // Visual feedback
+      deployBtn.style.opacity = '0.5';
+      deployBtn.textContent = '🚀 SENDING...';
+      
       e.preventDefault();
       e.stopPropagation();
-      toast('🚀 Deploying to GitHub...', 'success');
-      deployToGitHub();
+      
+      toast('🚀 Sending to GitHub...', 'success');
+      deployToGitHub().catch(err => {
+        console.error('[v2.9.9] DEPLOY ERROR:', err);
+        deployBtn.style.opacity = '1';
+        deployBtn.textContent = '🚀 DEPLOY TO GITHUB';
+      });
     };
     
-    deployBtn.onclick = triggerDeploy;
-    deployBtn.ontouchstart = triggerDeploy;
-    deployBtn.ontouchend = triggerDeploy;
-
-    // v2.9.1: Clean, normal touch binding (no global screen blocking)
-    deployBtn.onclick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toast('🚀 Deploying to GitHub...', 'success');
-      deployToGitHub();
-    };
-    deployBtn.ontouchstart = deployBtn.onclick;
+    // Bind every possible event to the trigger
+    ['click', 'touchstart', 'touchend', 'mousedown'].forEach(evt => {
+      deployBtn['on' + evt] = triggerDeploy;
+    });
   }
   if ($('#usEditorSkip')) $('#usEditorSkip').classList.remove('hidden');
   if ($('#usEditorReload')) $('#usEditorReload').classList.add('hidden');
