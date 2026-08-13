@@ -3247,3 +3247,31 @@ a:hover { text-decoration: underline; }
   0% { transform: scale(1); opacity: 0.8; }
   100% { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 3px rgba(255, 50, 50, 0.5)); }
 }
+
+/* ---------- Deploy Button Refinement (v2.6.4) ---------- */
+#usEditorDeploy {
+  background: linear-gradient(135deg, #6366f1, #a855f7) !important;
+  color: #fff !important;
+  padding: 12px 24px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+  border: none !important;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4) !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  transition: all 0.2s ease !important;
+  animation: deployPulse 2s infinite alternate !important;
+  z-index: 10001 !important;
+  display: inline-block; /* Ensure it's not hidden by display:none if ID matches */
+}
+#usEditorDeploy:active {
+  transform: scale(0.92) !important;
+  filter: brightness(1.2) !important;
+}
+@keyframes deployPulse {
+  0% { box-shadow: 0 0 10px rgba(99, 102, 241, 0.4); }
+  100% { box-shadow: 0 0 25px rgba(168, 85, 247, 0.7); }
+}
+.us-modal { z-index: 10000 !important; }
+.us-modal-foot { gap: 12px !important; padding: 18px 24px !important; }
