@@ -1661,8 +1661,13 @@ Rules:
     }
   };
 
-  // Engine priority: Hydra Chain (OpenRouter -> Pollinations) first, then Workers AI.
-  const ENGINE_ORDER = ['openrouter', 'pollinations', 'workersai', 'mistral', 'groq'];
+  // v2.9.1: Auto mode uses configured heads in a conservative order;
+  // missing secrets are skipped and failures continue through the chain.
+  const ENGINE_ORDER = [
+    'openrouter', 'gemini', 'groq', 'deepseek', 'mistral',
+    'cerebras', 'sambanova', 'cohere', 'together', 'fireworks', 'nvidia',
+    'workersai', 'pollinations'
+  ];
 
   // Model fallback pools per engine — tried in order, advances on 429.
   const ENGINE_MODEL_POOL = {

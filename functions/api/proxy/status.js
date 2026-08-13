@@ -40,7 +40,7 @@ const ENGINE_SECRETS = {
 };
 
 // Engines that are always available (no secret required)
-const KEYLESS_ENGINES = ['pollinations', 'kilo', 'llm7', 'opencode', 'bazaarlink', 'ovh', 'nvidia'];
+const KEYLESS_ENGINES = ['pollinations', 'kilo', 'llm7', 'opencode', 'bazaarlink', 'ovh'];
 
 // The same in-memory memo used by index.js. Workers module scope shares
 // state across requests in the same isolate, so rate-limit info written by
