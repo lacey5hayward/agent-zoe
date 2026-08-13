@@ -125,9 +125,8 @@
       const modal = createLauncherModal();
       document.body.appendChild(modal);
 
-      // Create and inject FAB
-      const fab = createLauncherButton();
-      document.body.appendChild(fab);
+      // v2.8.3: Floating FAB removed as per Mom's request to prevent touch interference.
+      // Access moved to sidebar (see index.html).
 
       // Sync stored character selection into CloneState on mount so both
       // state stores stay in agreement from the start.
@@ -152,6 +151,12 @@
       const closeBtn = modal.querySelector('.launcher-close');
       backdrop.addEventListener('click', () => this.hide());
       closeBtn.addEventListener('click', () => this.hide());
+
+      // Wire up sidebar button
+      const sidebarBtn = document.getElementById('sidebar-launcher-btn');
+      if (sidebarBtn) {
+        sidebarBtn.addEventListener('click', () => this.show());
+      }
 
       // Keyboard shortcut: Escape to close
       document.addEventListener('keydown', (e) => {
