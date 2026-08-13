@@ -40,6 +40,7 @@ function enterViewMode(path, text) {
   $('#usEditorRevert').disabled = (text === '');
   setEditorButtonsState();
   $('#usEditorModal').classList.add('open');
+  document.body.classList.add('us-editor-open');
   setTimeout(() => $('#usEditorTextarea').focus(), 50);
 }
 
@@ -66,12 +67,14 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
   $('#usEditorDeploy').disabled = false;
   $('#usEditorSkip').disabled = false;
   $('#usEditorModal').classList.add('open');
+  document.body.classList.add('us-editor-open');
   setTimeout(() => $('#usEditorTextarea').focus(), 50);
 }
 
 function closeFile() {
   if (E.mode === 'view' && E.dirty && !confirm('Unsaved changes will be lost. Close anyway?')) return;
   $('#usEditorModal').classList.remove('open');
+  document.body.classList.remove('us-editor-open');
   E.mode = 'view';
   E.currentPath = null;
   E.originalText = '';
