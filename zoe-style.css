@@ -1886,19 +1886,23 @@ a:hover { text-decoration: underline; }
   z-index: 999;
 }
 
-/* v2.8.5: Soft Mist — Keep code readable while focusing on the button */
-body.us-editor-open > *:not(#usApp):not(#usEditorDeploy) {
-  pointer-events: none !important;
-  filter: blur(2px) grayscale(0.3);
-  opacity: 0.8;
+/* v2.8.5 Patch C: The Ghost-Glass Shatter — No transparent layers at all */
+body.us-editor-open .us-modal {
+  background: none !important;
+  backdrop-filter: none !important;
+  pointer-events: none !important; /* Touch passes through the "glass" */
 }
 
-/* v2.8.5: Ensure the App and Modal are NOT blurred so code is readable */
-body.us-editor-open #usApp,
-body.us-editor-open #usEditorModal {
-  filter: none !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
+body.us-editor-open .us-modal-content {
+  pointer-events: auto !important; /* Only the editor box is solid */
+  box-shadow: 0 0 50px rgba(0,0,0,0.8) !important; /* Strong shadow instead of dimming */
+}
+
+/* Ensure the background app is still visible but non-interactive */
+body.us-editor-open #usApp {
+  pointer-events: none !important;
+  filter: grayscale(0.5);
+  opacity: 0.6;
 }
 
 /* v2.8.5: Force the button to be the ultimate touch target */
