@@ -1,6 +1,6 @@
 // ============================================================================
 // /api/proxy — Unified AI proxy (Phase 7: generic engine + 429 fallback)
-// v2.7.5: Hydra Sleep — Gemini Only (Temporary Disconnect)
+// v2.7.3: Hydra Sleep — Gemini Only (Temporary Disconnect)
 // ============================================================================
 
 const GITHUB_OWNER = 'lacey5hayward';
@@ -167,7 +167,7 @@ async function handleBuildRequest(body, env) {
     const content = atob(fileData.content.replace(/\n/g, ''));
 
     const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${content}`;
-        // v2.7.5: Hydra Sleep — Gemini Only (Temporarily Disconnected)
+        // v2.7.3: Hydra Sleep — Gemini Only (Temporarily Disconnected)
     const chain = ['gemini'];
     try {
       const aiRes = await callWithFallback(chain, { messages: [{ role: 'user', content: instruction }], sysPrompt, localKey }, env);
@@ -194,7 +194,7 @@ export async function onRequestPost(context) {
   const { engine, chain, dna, persona, messages, sysPrompt, prompt, model, localKey } = body;
   const composedSysPrompt = (sysPrompt || '') + (dna ? `\n\n[DNA]\n${dna}` : '') + (persona ? `\n\n[Persona]\n${persona}` : '');
   try {
-    // v2.7.5: Hydra Sleep — Gemini Only (Temporarily Disconnected)
+    // v2.7.3: Hydra Sleep — Gemini Only (Temporarily Disconnected)
     const chainToUse = Array.isArray(chain) ? ['gemini'] : [engine || 'gemini'];
     const result = await callWithFallback(chainToUse, { messages, sysPrompt: composedSysPrompt, model, localKey }, context.env);
     return jsonResponse(result);
