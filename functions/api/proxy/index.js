@@ -1,6 +1,6 @@
 // ============================================================================
 // /api/proxy — Unified AI proxy (Phase 7: generic engine + 429 fallback)
-// v2.7.1: Grand Intelligence Awakening — Gemini Primary Brain
+// v2.7.2: Reality Check — Fixed Gemini Model Typo
 // ============================================================================
 
 const GITHUB_OWNER = 'lacey5hayward';
@@ -25,7 +25,7 @@ const OPENAI_COMPAT = {
     label: 'OpenRouter',
     fallbacks: ['mistralai/mistral-7b-instruct:free', 'meta-llama/llama-3.1-8b-instruct:free'],
     extraHeaders: () => ({
-      'HTTP-Referer': `https://${GITHUB_REPO}.pages.dev`,
+      'HTTP-Referer': `https://agent-zoe.pages.dev`,
       'X-Title': 'Agent Zoe Social Hub'
     })
   }
@@ -34,7 +34,7 @@ const OPENAI_COMPAT = {
 const SPECIAL = {
   gemini: {
     id: 'gemini', label: 'Gemini', secret: 'GEMINI_API_KEY',
-    url: ({ model }) => `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=__KEY__`,
+    url: ({ model }) => `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-1.5-flash'}:generateContent?key=__KEY__`,
     formatBody: ({ messages, sysPrompt }) => ({
       contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
       systemInstruction: { parts: [{ text: sysPrompt }] },
