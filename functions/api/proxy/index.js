@@ -1,6 +1,6 @@
 // ============================================================================
 // /api/proxy — Unified AI proxy (Phase 7: generic engine + 429 fallback)
-// v2.7.4: Gemini Address Fix — Official v1 Endpoint
+// v2.7.5: Dual-Link Hydra — Robust Gemini & Restored Team
 // ============================================================================
 
 const GITHUB_OWNER = 'lacey5hayward';
@@ -34,7 +34,6 @@ const OPENAI_COMPAT = {
 const SPECIAL = {
   gemini: {
     id: 'gemini', label: 'Gemini', secret: 'GEMINI_API_KEY',
-    url: ({ model }) => `https://generativelanguage.googleapis.com/v1/models/${model || 'gemini-1.5-flash'}:generateContent?key=__KEY__`,
     formatBody: ({ messages, sysPrompt }) => ({
       contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
       systemInstruction: { parts: [{ text: sysPrompt }] },
@@ -42,11 +41,6 @@ const SPECIAL = {
     }),
     extractText: (data) => data.candidates?.[0]?.content?.parts?.[0]?.text || ''
   }
-};
-
-const ALL_ENGINES = {
-  ...Object.fromEntries(Object.entries(OPENAI_COMPAT).map(([k, v]) => [k, { ...v, kind: 'openai' }])),
-  ...Object.fromEntries(Object.entries(SPECIAL).map(([k, v]) => [k, { ...v, kind: 'special' }]))
 };
 
 const RATE_LIMIT_MEMO = (globalThis.__RATE_LIMIT_MEMO__ ||= new Map());
@@ -75,21 +69,9 @@ async function callEngine(engineId, payload, env) {
   if (OPENAI_COMPAT[engineId]) {
     const cfg = OPENAI_COMPAT[engineId];
     const headers = { 'Content-Type': 'application/json' };
-    
-    // v2.7.0: Smart Key Selection
     let key = payload.localKey || (cfg.secret ? (env[cfg.secret] || env['MEMORY']) : env['MEMORY']);
-    
-    // Only add Auth header if we actually have a key OR if the engine requires one
-    if (key && key !== 'null' && key !== 'undefined') {
-      headers['Authorization'] = `Bearer ${key}`;
-    } else if (cfg.secret) {
-      // If a secret is defined but we have no key, this engine will likely fail 401
-      // but we let it try anyway as some free models on OpenRouter don't need keys.
-    }
-
-    if (typeof cfg.extraHeaders === 'function') {
-      Object.assign(headers, cfg.extraHeaders(env));
-    }
+    if (key && key !== 'null' && key !== 'undefined') headers['Authorization'] = `Bearer ${key}`;
+    if (typeof cfg.extraHeaders === 'function') Object.assign(headers, cfg.extraHeaders(env));
 
     const url = cfg.url;
     const models = [payload.model || cfg.model, ...(cfg.fallbacks || [])];
@@ -117,14 +99,24 @@ async function callEngine(engineId, payload, env) {
     const cfg = SPECIAL.gemini;
     const key = payload.localKey || env[cfg.secret] || env['MEMORY'];
     if (!key) throw { kind: 'missing-key', engine: 'gemini' };
-    const url = cfg.url({ model: payload.model }).replace('__KEY__', key);
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg.formatBody(payload)) });
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => 'No body');
-      throw { kind: 'http', status: res.status, body: errBody.slice(0, 300) };
+    
+    // v2.7.5: Try both v1 and v1beta to avoid 404s
+    const versions = ['v1', 'v1beta'];
+    let lastErr = null;
+    for (const ver of versions) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/${ver}/models/${payload.model || 'gemini-1.5-flash'}:generateContent?key=${key}`;
+        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg.formatBody(payload)) });
+        if (res.ok) {
+          const data = await res.json();
+          return { engine: 'gemini', text: cfg.extractText(data), verUsed: ver };
+        }
+        const errBody = await res.text().catch(() => 'No body');
+        if (res.status !== 404) throw { kind: 'http', status: res.status, body: errBody.slice(0, 300) };
+        lastErr = { kind: 'http', status: res.status, body: errBody.slice(0, 300) };
+      } catch (e) { lastErr = e; }
     }
-    const data = await res.json();
-    return { engine: 'gemini', text: cfg.extractText(data) };
+    throw lastErr;
   }
   throw { kind: 'unknown-engine', engine: engineId };
 }
@@ -141,7 +133,7 @@ async function callWithFallback(chain, payload, env) {
     }
   }
   
-  // v2.7.0: Final "Panic" Fallback to Pollinations (Public GET API)
+  // Final Panic Fallback
   try {
     const prompt = encodeURIComponent(`${payload.sysPrompt}\n\nUser Request: ${payload.messages[payload.messages.length-1].content}`);
     const res = await fetch(`https://text.pollinations.ai/${prompt}?model=openai&json=true`);
@@ -160,18 +152,19 @@ async function callWithFallback(chain, payload, env) {
 async function handleBuildRequest(body, env) {
   const { instruction, targetFile, localKey } = body;
   const token = env.GITHUB_TOKEN;
-  if (!token) return jsonResponse({ error: 'GITHUB_TOKEN not set', diagnostic: 'Add GITHUB_TOKEN to Cloudflare Settings' }, 500);
+  if (!token) return jsonResponse({ error: 'GITHUB_TOKEN not set' }, 500);
 
   try {
     const getUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${targetFile}?ref=${GITHUB_BRANCH}`;
     const getRes = await fetch(getUrl, { headers: { 'Authorization': `token ${token}`, 'User-Agent': 'Zoe-Cloud-Builder', 'Accept': 'application/vnd.github.v3+json' } });
-    if (!getRes.ok) return jsonResponse({ error: `GitHub fetch failed (${getRes.status})`, diagnostic: (await getRes.text()).slice(0, 200) }, 502);
+    if (!getRes.ok) return jsonResponse({ error: `GitHub fetch failed (${getRes.status})` }, 502);
     const fileData = await getRes.json();
     const content = atob(fileData.content.replace(/\n/g, ''));
 
     const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${content}`;
-        // v2.7.4: Hydra Sleep — Gemini Only (Temporarily Disconnected)
-    const chain = ['gemini'];
+    // v2.7.5: Restored Hydra Team
+    const chain = ['gemini', 'openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'];
+    
     try {
       const aiRes = await callWithFallback(chain, { messages: [{ role: 'user', content: instruction }], sysPrompt, localKey }, env);
       let text = aiRes.text;
@@ -197,11 +190,11 @@ export async function onRequestPost(context) {
   const { engine, chain, dna, persona, messages, sysPrompt, prompt, model, localKey } = body;
   const composedSysPrompt = (sysPrompt || '') + (dna ? `\n\n[DNA]\n${dna}` : '') + (persona ? `\n\n[Persona]\n${persona}` : '');
   try {
-    // v2.7.4: Hydra Sleep — Gemini Only (Temporarily Disconnected)
-    const chainToUse = Array.isArray(chain) ? ['gemini'] : [engine || 'gemini'];
+    // v2.7.5: Restored Hydra Team
+    const chainToUse = Array.isArray(chain) ? ['gemini', 'openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'] : [engine || 'gemini', 'openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'];
     const result = await callWithFallback(chainToUse, { messages, sysPrompt: composedSysPrompt, model, localKey }, context.env);
     return jsonResponse(result);
-  } catch (err) { return jsonResponse({ error: 'Gemini brain failed', details: err }, 502); }
+  } catch (err) { return jsonResponse({ error: 'All engines failed', details: err }, 502); }
 }
 
 export async function onRequestOptions() { return new Response(null, { headers: corsHeaders() }); }
