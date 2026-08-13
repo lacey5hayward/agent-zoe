@@ -1,6 +1,6 @@
 // ============================================================================
 // /api/proxy — Unified AI proxy (Phase 7: generic engine + 429 fallback)
-// v2.7.5: Dual-Link Hydra — Robust Gemini & Restored Team
+// v2.7.3: Midnight Final Alignment — Cloud Slimming & Smart Key Detection
 // ============================================================================
 
 const GITHUB_OWNER = 'lacey5hayward';
@@ -65,13 +65,44 @@ function jsonResponse(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
 }
 
+// v2.7.3: Smart Key Detection (checks Secrets and KV)
+async function getSecret(keyName, env) {
+  // 1. Check direct environment secret
+  if (env[keyName]) return env[keyName];
+  
+  // 2. Check if MEMORY is a KV namespace and try to get from there
+  if (env.MEMORY && typeof env.MEMORY.get === 'function') {
+    try {
+      const val = await env.MEMORY.get(keyName);
+      if (val) return val;
+      // Fallback: If they saved the key AS the value of MEMORY, we can't easily get it,
+      // but if they put it in the KV under 'MEMORY' or 'API_KEY'...
+      const mem = await env.MEMORY.get('MEMORY');
+      if (mem) return mem;
+    } catch (e) {}
+  }
+  
+  // 3. Fallback to just the MEMORY secret if it's a string
+  if (typeof env.MEMORY === 'string') return env.MEMORY;
+  
+  return null;
+}
+
 async function callEngine(engineId, payload, env) {
   if (OPENAI_COMPAT[engineId]) {
     const cfg = OPENAI_COMPAT[engineId];
     const headers = { 'Content-Type': 'application/json' };
-    let key = payload.localKey || (cfg.secret ? (env[cfg.secret] || env['MEMORY']) : env['MEMORY']);
-    if (key && key !== 'null' && key !== 'undefined') headers['Authorization'] = `Bearer ${key}`;
-    if (typeof cfg.extraHeaders === 'function') Object.assign(headers, cfg.extraHeaders(env));
+    
+    // v2.7.3: Use Smart Key Detection
+    let key = payload.localKey || await getSecret(cfg.secret || 'OPENROUTER_API_KEY', env);
+    
+    if (key && key !== 'null' && key !== 'undefined') {
+      headers['Authorization'] = `Bearer ${key}`;
+    }
+
+    if (typeof cfg.extraHeaders === 'function') {
+      Object.assign(headers, cfg.extraHeaders(env));
+    }
 
     const url = cfg.url;
     const models = [payload.model || cfg.model, ...(cfg.fallbacks || [])];
@@ -97,10 +128,10 @@ async function callEngine(engineId, payload, env) {
   
   if (engineId === 'gemini') {
     const cfg = SPECIAL.gemini;
-    const key = payload.localKey || env[cfg.secret] || env['MEMORY'];
+    let key = payload.localKey || await getSecret('GEMINI_API_KEY', env);
     if (!key) throw { kind: 'missing-key', engine: 'gemini' };
     
-    // v2.7.5: Try both v1 and v1beta to avoid 404s
+    // v2.7.3: Robust Gemini URL selection
     const versions = ['v1', 'v1beta'];
     let lastErr = null;
     for (const ver of versions) {
@@ -151,7 +182,7 @@ async function callWithFallback(chain, payload, env) {
 
 async function handleBuildRequest(body, env) {
   const { instruction, targetFile, localKey } = body;
-  const token = env.GITHUB_TOKEN;
+  const token = await getSecret('GITHUB_TOKEN', env);
   if (!token) return jsonResponse({ error: 'GITHUB_TOKEN not set' }, 500);
 
   try {
@@ -161,8 +192,25 @@ async function handleBuildRequest(body, env) {
     const fileData = await getRes.json();
     const content = atob(fileData.content.replace(/\n/g, ''));
 
-    const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${content}`;
-    // v2.7.5: Restored Hydra Team
+    // v2.7.3: Cloud-Side Content Slimming
+    // If the file is huge, we only send the relevant parts to the AI to avoid 400/404 errors
+    let slimContent = content;
+    if (content.length > 15000) {
+      const keywords = instruction.toLowerCase().split(/\s+/).filter(k => k.length > 3);
+      const lines = content.split('\n');
+      const relevantLines = new Set();
+      lines.forEach((line, i) => {
+        if (keywords.some(k => line.toLowerCase().includes(k))) {
+          for (let j = Math.max(0, i-60); j < Math.min(lines.length, i+60); j++) relevantLines.add(j);
+        }
+      });
+      if (relevantLines.size > 0) {
+        slimContent = Array.from(relevantLines).sort((a,b) => a-b).map(i => lines[i]).join('\n');
+        slimContent = `[SLIMMED VIEW OF ${targetFile}]\n...\n${slimContent}\n...`;
+      }
+    }
+
+    const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${slimContent}`;
     const chain = ['gemini', 'openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'];
     
     try {
@@ -190,7 +238,6 @@ export async function onRequestPost(context) {
   const { engine, chain, dna, persona, messages, sysPrompt, prompt, model, localKey } = body;
   const composedSysPrompt = (sysPrompt || '') + (dna ? `\n\n[DNA]\n${dna}` : '') + (persona ? `\n\n[Persona]\n${persona}` : '');
   try {
-    // v2.7.5: Restored Hydra Team
     const chainToUse = Array.isArray(chain) ? ['gemini', 'openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'] : [engine || 'gemini', 'openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'];
     const result = await callWithFallback(chainToUse, { messages, sysPrompt: composedSysPrompt, model, localKey }, context.env);
     return jsonResponse(result);
