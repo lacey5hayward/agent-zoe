@@ -179,16 +179,16 @@ HARD RULES: "find" must be unique. JSON only.`;
         lastError = `Proxy failed (${res.status}): ${errData.error || 'Unknown'}`;
       }
     } catch (e) { 
-      lastError = `Proxy error: ${e.name === 'AbortError' ? 'Timeout (20s)' : e.message}`;
+      lastError = `Proxy error: ${e.name === 'AbortError' ? 'Timeout (60s)' : e.message}`;
     }
 
-    // 2. Direct Fallback to Kilo (Free & OpenAI Compatible)
+    // 2. Direct Fallback to LLM7 (Better CORS support)
     try {
-      const res = await fetch('https://kilo.ai/api/openai/v1/chat/completions', {
+      const res = await fetch('https://api.llm7.io/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          model: 'auto:free',
+          model: 'gpt-4o-mini',
           messages: messages,
           temperature: 0.7
         })
@@ -198,7 +198,7 @@ HARD RULES: "find" must be unique. JSON only.`;
         return data.choices[0].message.content || '';
       }
       const txt = await res.text().catch(() => '');
-      throw new Error(`Kilo failed (${res.status}): ${txt.slice(0, 100)}`);
+      throw new Error(`LLM7 failed (${res.status}): ${txt.slice(0, 100)}`);
     } catch (e) {
       throw new Error(`${lastError} | Emergency brain failed: ${e.message}`);
     }
@@ -236,7 +236,29 @@ HARD RULES: "find" must be unique. JSON only.`;
       }
 
       B.setStatus("💓 Zoe is drafting the change...");
-      const system = buildSystemPrompt(targetFile, targetContent);
+      
+      // Context Slimming: If the file is huge, only send the relevant parts
+      let slimContent = targetContent;
+      if (targetContent.length > 20000) {
+        B.setStatus("💓 Zoe is focusing on relevant code...");
+        // Look for keywords related to the user's request
+        const keywords = trimmed.toLowerCase().split(/\s+/).filter(k => k.length > 3);
+        const lines = targetContent.split('\n');
+        const relevantLines = new Set();
+        lines.forEach((line, i) => {
+          if (keywords.some(k => line.toLowerCase().includes(k))) {
+            for (let j = Math.max(0, i-50); j < Math.min(lines.length, i+50); j++) {
+              relevantLines.add(j);
+            }
+          }
+        });
+        if (relevantLines.size > 0) {
+          slimContent = Array.from(relevantLines).sort((a,b) => a-b).map(i => lines[i]).join('\n');
+          slimContent = `[SLIMMED VIEW OF ${targetFile}]\n...\n${slimContent}\n...`;
+        }
+      }
+
+      const system = buildSystemPrompt(targetFile, slimContent);
       const reply = await callAI([{ role: 'system', content: system }, { role: 'user', content: trimmed }]);
       
       B.removeTyping();
