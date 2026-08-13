@@ -60,11 +60,21 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
   if ($('#usEditorSave')) $('#usEditorSave').classList.add('hidden');
   if ($('#usEditorRevert')) $('#usEditorRevert').classList.add('hidden');
   if ($('#usEditorApply')) $('#usEditorApply').classList.remove('hidden');
-  if ($('#usEditorDeploy')) $('#usEditorDeploy').style.display = 'inline-block';
+  const deployBtn = $('#usEditorDeploy');
+  if (deployBtn) {
+    deployBtn.style.display = 'block';
+    // v2.8.5: Physically move the button to the body to bypass any parent touch-blocking
+    document.body.appendChild(deployBtn);
+    // Add touchstart for immediate iPad response
+    deployBtn.ontouchstart = (e) => {
+      e.preventDefault();
+      deployToGitHub();
+    };
+  }
   if ($('#usEditorSkip')) $('#usEditorSkip').classList.remove('hidden');
   if ($('#usEditorReload')) $('#usEditorReload').classList.add('hidden');
   $('#usEditorApply').disabled = false;
-  $('#usEditorDeploy').disabled = false;
+  if (deployBtn) deployBtn.disabled = false;
   $('#usEditorSkip').disabled = false;
   $('#usEditorModal').classList.add('open');
   document.body.classList.add('us-editor-open');
@@ -73,6 +83,15 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
 
 function closeFile() {
   if (E.mode === 'view' && E.dirty && !confirm('Unsaved changes will be lost. Close anyway?')) return;
+  
+  // v2.8.5: Put the deploy button back where it belongs when closing
+  const deployBtn = $('#usEditorDeploy');
+  const foot = $('#usEditorModal .us-modal-foot');
+  if (deployBtn && foot) {
+    deployBtn.style.display = 'none';
+    foot.appendChild(deployBtn);
+  }
+
   $('#usEditorModal').classList.remove('open');
   document.body.classList.remove('us-editor-open');
   E.mode = 'view';

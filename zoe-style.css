@@ -1889,8 +1889,20 @@ a:hover { text-decoration: underline; }
 /* v2.8.5: Total Clearance — Absolute isolation for the Deploy button */
 body.us-editor-open > *:not(#usEditorModal):not(#usEditorDeploy) {
   pointer-events: none !important;
-  filter: blur(2px) grayscale(0.5);
-  opacity: 0.3;
+  filter: blur(5px) grayscale(0.8);
+  opacity: 0.2;
+}
+
+/* Ensure the modal itself remains clickable even if the body is restricted */
+#usEditorModal {
+  pointer-events: auto !important;
+}
+
+/* v2.8.5: Force the button to be the ultimate touch target */
+#usEditorDeploy {
+  pointer-events: all !important;
+  cursor: pointer !important;
+  touch-action: manipulation !important;
 }
 
 #usEditorModal.open ~ *,

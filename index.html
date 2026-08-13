@@ -6,11 +6,12 @@
     // NUCLEAR RESET v2.4.2: Clear everything for consolidated builder
     (function() {
       var VER = '2.8.5';
-      if (localStorage.getItem('zoe-version') !== VER) {
-        // v2.8.5: The Last Stand — Nuclear Touch Fix for iPad Deploy button
+      var PATCH = 'A'; // v2.8.5 Patch A: The Touch Force Update
+      if (localStorage.getItem('zoe-version') !== VER || localStorage.getItem('zoe-patch') !== PATCH) {
         localStorage.clear();
         sessionStorage.clear();
         localStorage.setItem('zoe-version', VER);
+        localStorage.setItem('zoe-patch', PATCH);
         window.location.reload(true);
       }
     })();
