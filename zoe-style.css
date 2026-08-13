@@ -3263,28 +3263,29 @@ body:has(#usEditorModal.open) .character-launcher-fab {
 
 /* ---------- Deploy Button Refinement (v2.6.4) ---------- */
 #usEditorDeploy {
-  /* v2.8.8: The High-Ground Fix — Moved to top, simplified */
+  /* v2.8.9: The Global Interceptor — Maximum Visibility */
   position: fixed !important;
   top: 20px !important;
   left: 20px !important;
   right: 20px !important;
-  height: 70px !important;
+  height: 80px !important;
+  background: #ff00ff !important; /* Pure Neon Purple for max contrast */
   background: linear-gradient(135deg, #ff00ff, #6366f1) !important;
   color: #fff !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  font-size: 22px !important;
+  font-size: 24px !important;
   font-weight: 900 !important;
-  border-radius: 15px !important;
-  border: 4px solid #fff !important;
-  box-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 20px rgba(255, 0, 255, 0.5) !important;
+  border-radius: 20px !important;
+  border: 6px solid #fff !important;
+  box-shadow: 0 0 0 100vmax rgba(0,0,0,0.4), 0 0 60px rgba(255, 0, 255, 0.8) !important;
   cursor: pointer !important;
   pointer-events: all !important;
   z-index: 2147483647 !important;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  touch-action: manipulation !important;
+  letter-spacing: 3px;
+  touch-action: none !important; /* Disable all system gestures on the button */
 }
 
 /* Touch-Target Expansion */

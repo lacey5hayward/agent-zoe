@@ -66,12 +66,13 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     // v2.8.5 Patch D: Physically move the button to the body to bypass any parent touch-blocking
     document.body.appendChild(deployBtn);
     
-    // v2.8.8: The High-Ground Fix
+    // v2.8.9: The Global Interceptor
     deployBtn.setAttribute('role', 'button');
     deployBtn.setAttribute('aria-label', 'Deploy to GitHub');
     
     const triggerDeploy = (e) => {
-      console.log('[v2.8.8] Deploy triggered by:', e.type);
+      console.log('[v2.8.9] Deploy triggered by:', e.type);
+      if (deployBtn.disabled) return;
       e.preventDefault();
       e.stopPropagation();
       toast('🚀 Deploying to GitHub...', 'success');
@@ -81,6 +82,21 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     deployBtn.onclick = triggerDeploy;
     deployBtn.ontouchstart = triggerDeploy;
     deployBtn.ontouchend = triggerDeploy;
+
+    // v2.8.9: Global Touch Radar — Catch the touch even if the button "misses" it
+    const globalTouchRadar = (e) => {
+      if (E.mode !== 'preview' || !deployBtn || deployBtn.style.display === 'none') return;
+      const touch = e.touches ? e.touches[0] : e;
+      const rect = deployBtn.getBoundingClientRect();
+      // Expand hit zone by 30px
+      if (touch.clientX >= rect.left - 30 && touch.clientX <= rect.right + 30 &&
+          touch.clientY >= rect.top - 30 && touch.clientY <= rect.bottom + 30) {
+        console.log('[v2.8.9] Global Radar caught touch!');
+        triggerDeploy(e);
+      }
+    };
+    window.addEventListener('touchstart', globalTouchRadar, { passive: false });
+    window.addEventListener('mousedown', globalTouchRadar);
   }
   if ($('#usEditorSkip')) $('#usEditorSkip').classList.remove('hidden');
   if ($('#usEditorReload')) $('#usEditorReload').classList.add('hidden');
