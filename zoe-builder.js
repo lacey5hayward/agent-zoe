@@ -148,12 +148,12 @@ HARD RULES: "find" must be unique. JSON only.`;
 
   async function callAI(messages) {
     let lastError = '';
-    // 1. Try Proxy with 20s timeout (increased for complex builds)
+    // 1. Try Proxy with 60s timeout (increased for complex builds)
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
       
-      const rawBody = { chain: ['openrouter', 'pollinations'], messages: messages.slice(1), sysPrompt: messages[0].content };
+      const rawBody = { chain: ['openrouter', 'kilo', 'llm7', 'opencode'], messages: messages.slice(1), sysPrompt: messages[0].content };
       const stealthBtn = document.getElementById('usStealthBtn');
       const isStealth = stealthBtn && stealthBtn.dataset.active === 'true';
       let payload = rawBody;
@@ -182,16 +182,23 @@ HARD RULES: "find" must be unique. JSON only.`;
       lastError = `Proxy error: ${e.name === 'AbortError' ? 'Timeout (20s)' : e.message}`;
     }
 
-    // 2. Direct Fallback to Pollinations
+    // 2. Direct Fallback to Kilo (Free & OpenAI Compatible)
     try {
-      const res = await fetch(POLLINATIONS, {
+      const res = await fetch('https://kilo.ai/api/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages, model: 'openai', stream: false })
+        body: JSON.stringify({ 
+          model: 'auto:free',
+          messages: messages,
+          temperature: 0.7
+        })
       });
-      if (res.ok) return await res.text();
+      if (res.ok) {
+        const data = await res.json();
+        return data.choices[0].message.content || '';
+      }
       const txt = await res.text().catch(() => '');
-      throw new Error(`Pollinations failed (${res.status}): ${txt.slice(0, 100)}`);
+      throw new Error(`Kilo failed (${res.status}): ${txt.slice(0, 100)}`);
     } catch (e) {
       throw new Error(`${lastError} | Emergency brain failed: ${e.message}`);
     }
