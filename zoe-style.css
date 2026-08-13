@@ -3272,7 +3272,7 @@ body:has(#usEditorModal.open) .character-launcher-fab {
 
 /* ---------- Deploy Button Refinement (v2.6.4) ---------- */
 #usEditorDeploy {
-  /* v2.8.5: Nuclear Touch Fix — Giant, Centered, and Unstoppable */
+  /* v2.8.5 Patch D: Infinite Z-Index & Maximum Touch Priority */
   position: fixed !important;
   bottom: 10% !important;
   left: 50% !important;
@@ -3288,11 +3288,12 @@ body:has(#usEditorModal.open) .character-launcher-fab {
   cursor: pointer !important;
   pointer-events: all !important;
   -webkit-tap-highlight-color: transparent !important;
-  z-index: 9999999 !important;
+  z-index: 2147483647 !important; /* Maximum 32-bit signed integer z-index */
   display: none; /* Controlled by JS */
   text-transform: uppercase;
   letter-spacing: 2px;
   animation: deployPulse 1s infinite alternate !important;
+  touch-action: manipulation !important;
 }
 
 #usEditorDeploy:active {

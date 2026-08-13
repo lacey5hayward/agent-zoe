@@ -63,13 +63,24 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
   const deployBtn = $('#usEditorDeploy');
   if (deployBtn) {
     deployBtn.style.display = 'block';
-    // v2.8.5: Physically move the button to the body to bypass any parent touch-blocking
+    // v2.8.5 Patch D: Physically move the button to the body to bypass any parent touch-blocking
     document.body.appendChild(deployBtn);
-    // Add touchstart for immediate iPad response
-    deployBtn.ontouchstart = (e) => {
+    
+    // Remove old listeners to prevent stacking
+    const newBtn = deployBtn.cloneNode(true);
+    deployBtn.parentNode.replaceChild(newBtn, deployBtn);
+    
+    // Add multi-event listeners for iPad Safari
+    const triggerDeploy = (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      toast('Deploying to GitHub...', 'success');
       deployToGitHub();
     };
+    
+    newBtn.addEventListener('click', triggerDeploy);
+    newBtn.addEventListener('touchstart', triggerDeploy, { passive: false });
+    newBtn.addEventListener('touchend', triggerDeploy, { passive: false });
   }
   if ($('#usEditorSkip')) $('#usEditorSkip').classList.remove('hidden');
   if ($('#usEditorReload')) $('#usEditorReload').classList.add('hidden');
