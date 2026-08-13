@@ -1886,15 +1886,18 @@ a:hover { text-decoration: underline; }
   z-index: 999;
 }
 
-/* v2.8.5: Total Clearance — Absolute isolation for the Deploy button */
-body.us-editor-open > *:not(#usEditorModal):not(#usEditorDeploy) {
+/* v2.8.5: Soft Mist — Keep code readable while focusing on the button */
+body.us-editor-open > *:not(#usApp):not(#usEditorDeploy) {
   pointer-events: none !important;
-  filter: blur(5px) grayscale(0.8);
-  opacity: 0.2;
+  filter: blur(2px) grayscale(0.3);
+  opacity: 0.8;
 }
 
-/* Ensure the modal itself remains clickable even if the body is restricted */
-#usEditorModal {
+/* v2.8.5: Ensure the App and Modal are NOT blurred so code is readable */
+body.us-editor-open #usApp,
+body.us-editor-open #usEditorModal {
+  filter: none !important;
+  opacity: 1 !important;
   pointer-events: auto !important;
 }
 
