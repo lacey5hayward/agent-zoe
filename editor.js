@@ -29,13 +29,13 @@ function enterViewMode(path, text) {
   E.proposed = null;
   $('#usEditorPath').textContent = path;
   $('#usEditorTextarea').value = text;
-  $('#usEditorPreviewMeta').classList.add('hidden');
-  $('#usEditorSave').classList.remove('hidden');
-  $('#usEditorRevert').classList.remove('hidden');
-  $('#usEditorApply').classList.add('hidden');
-  $('#usEditorDeploy').style.display = 'none';
-  $('#usEditorSkip').classList.add('hidden');
-  $('#usEditorReload').classList.add('hidden');
+  if ($('#usEditorPreviewMeta')) $('#usEditorPreviewMeta').classList.add('hidden');
+  if ($('#usEditorSave')) $('#usEditorSave').classList.remove('hidden');
+  if ($('#usEditorRevert')) $('#usEditorRevert').classList.remove('hidden');
+  if ($('#usEditorApply')) $('#usEditorApply').classList.add('hidden');
+  if ($('#usEditorDeploy')) $('#usEditorDeploy').style.display = 'none';
+  if ($('#usEditorSkip')) $('#usEditorSkip').classList.add('hidden');
+  if ($('#usEditorReload')) $('#usEditorReload').classList.add('hidden');
   $('#usEditorSave').disabled = true;
   $('#usEditorRevert').disabled = (text === '');
   setEditorButtonsState();
@@ -56,12 +56,12 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     <pre class="us-editor-find">${escapeHtml(find)}</pre>
     <div class="us-editor-preview-label">With your edit:</div>
   `;
-  $('#usEditorSave').classList.add('hidden');
-  $('#usEditorRevert').classList.add('hidden');
-  $('#usEditorApply').classList.remove('hidden');
-  $('#usEditorDeploy').style.display = 'inline-block';
-  $('#usEditorSkip').classList.remove('hidden');
-  $('#usEditorReload').classList.add('hidden');
+  if ($('#usEditorSave')) $('#usEditorSave').classList.add('hidden');
+  if ($('#usEditorRevert')) $('#usEditorRevert').classList.add('hidden');
+  if ($('#usEditorApply')) $('#usEditorApply').classList.remove('hidden');
+  if ($('#usEditorDeploy')) $('#usEditorDeploy').style.display = 'inline-block';
+  if ($('#usEditorSkip')) $('#usEditorSkip').classList.remove('hidden');
+  if ($('#usEditorReload')) $('#usEditorReload').classList.add('hidden');
   $('#usEditorApply').disabled = false;
   $('#usEditorDeploy').disabled = false;
   $('#usEditorSkip').disabled = false;
