@@ -216,55 +216,30 @@ HARD RULES: "find" must be unique. JSON only.`;
 
     try {
       const targetFile = guessTargetFile(trimmed);
-      B.setStatus(`💓 Zoe is reading ${targetFile}...`);
+      B.setStatus(`💓 Zoe is building in the cloud...`);
       
-      let targetContent = await window.UsFiles.read(targetFile);
-      if (!targetContent) {
-        try {
-          const res = await fetch(targetFile + '?v=' + Date.now());
-          if (res.ok) {
-            targetContent = await res.text();
-            await window.UsFiles.write(targetFile, targetContent);
-          }
-        } catch (e) {}
+      // v2.6.7: Cloud Builder Integration
+      // Instead of reading the file on the iPad, we send the instruction to the Worker.
+      // The Worker reads the file from GitHub and calls the AI itself.
+      const res = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'build',
+          instruction: trimmed,
+          targetFile: targetFile
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Cloud build failed' }));
+        throw new Error(err.error || 'Cloud build failed');
       }
 
-      if (!targetContent) {
-        B.removeTyping();
-        B.postAI(`I'm still opening my toolbox for "${targetFile}". Please try again in 2 seconds, Mom!`, 'Zoe');
-        B.busy = false; return;
-      }
-
-      B.setStatus("💓 Zoe is drafting the change...");
-      
-      // Context Slimming: If the file is huge, only send the relevant parts
-      let slimContent = targetContent;
-      if (targetContent.length > 20000) {
-        B.setStatus("💓 Zoe is focusing on relevant code...");
-        // Look for keywords related to the user's request
-        const keywords = trimmed.toLowerCase().split(/\s+/).filter(k => k.length > 3);
-        const lines = targetContent.split('\n');
-        const relevantLines = new Set();
-        lines.forEach((line, i) => {
-          if (keywords.some(k => line.toLowerCase().includes(k))) {
-            for (let j = Math.max(0, i-50); j < Math.min(lines.length, i+50); j++) {
-              relevantLines.add(j);
-            }
-          }
-        });
-        if (relevantLines.size > 0) {
-          slimContent = Array.from(relevantLines).sort((a,b) => a-b).map(i => lines[i]).join('\n');
-          slimContent = `[SLIMMED VIEW OF ${targetFile}]\n...\n${slimContent}\n...`;
-        }
-      }
-
-      const system = buildSystemPrompt(targetFile, slimContent);
-      const reply = await callAI([{ role: 'system', content: system }, { role: 'user', content: trimmed }]);
+      const parsed = await res.json();
       
       B.removeTyping();
       B.setStatus("Zoe is ready!");
-
-      const parsed = tryParseJson(reply);
       if (!parsed) {
         B.postAI("I couldn't quite draft that correctly. Can you try again, Mom?", 'Build Agent');
         return;
