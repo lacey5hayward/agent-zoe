@@ -205,18 +205,26 @@ HARD RULES: "find" must be unique. JSON only.`;
       // The Worker reads the file from GitHub and calls the AI itself.
       // v2.6.9: Pass localKey from browser settings to Cloud Builder
       const localKey = localStorage.getItem('us-openrouter-key') || localStorage.getItem('us-universal-key');
-      const res = await fetch('/api/proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'build',
-          instruction: trimmed,
-          targetFile: targetFile,
-          localKey: localKey
-        })
-      });
+      
+      // v2.7.8: Absolute URL & Retry logic for Safari "Load failed"
+      const url = window.location.origin + '/api/proxy';
+      let res, lastErr;
+      for (let i = 0; i < 3; i++) {
+        try {
+          res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'build', instruction: trimmed, targetFile: targetFile, localKey: localKey })
+          });
+          if (res.ok) break;
+        } catch (e) {
+          lastErr = e;
+          if (i < 2) await new Promise(r => setTimeout(r, 1000));
+        }
+      }
 
-      if (!res.ok) {
+      if (!res || !res.ok) {
+        if (!res && lastErr) throw new Error(`Network failed (Safari Load Error): ${lastErr.message}`);
         const err = await res.json().catch(() => ({ error: 'Cloud build failed' }));
         const msg = err.diagnostic ? `${err.error} (${err.diagnostic})` : (err.error || 'Cloud build failed');
         throw new Error(msg);
@@ -320,7 +328,8 @@ HARD RULES: "find" must be unique. JSON only.`;
 
   async function deploy(path, content, message) {
     try {
-      const res = await fetch('/api/deploy', {
+      const url = window.location.origin + '/api/deploy';
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path, content, message })
