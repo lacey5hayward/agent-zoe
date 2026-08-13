@@ -25,15 +25,13 @@
         });
       }
 
-      // Bind user menu
+      // Bind user menu (Sidebar relocation - popup no longer needed)
       const menuBtn = document.getElementById('zoe-user-menu-btn');
-      const menuPopup = document.getElementById('zoe-user-menu-popup');
-      if (menuBtn && menuPopup) {
+      if (menuBtn) {
         menuBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          menuPopup.hidden = !menuPopup.hidden;
+          // Optional: Toggle sidebar expansion or just ignore
         });
-        document.addEventListener('click', () => { menuPopup.hidden = true; });
       }
 
       // Bind logout

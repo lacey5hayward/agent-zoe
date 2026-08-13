@@ -52,11 +52,18 @@ a { color: #0d9488; }
 .nav-item:hover { background: #1e293b; color: #e2e8f0; }
 .nav-item.active { background: #1e293b; color: #fff; }
 .nav-icon { width: 18px; text-align: center; opacity: .8; font-size: 14px; }
-.sidebar-footer { margin-top: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid rgba(255,255,255,0.05); }
-.sidebar-admin-btn { display: block; background: rgba(20, 184, 166, 0.08); color: #14b8a6; text-decoration: none; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 600; text-align: center; border: 1px solid rgba(20, 184, 166, 0.15); transition: all 0.12s; order: 2; }
-.sidebar-admin-btn:hover { background: rgba(20, 184, 166, 0.15); color: #2dd4bf; transform: translateY(-1px); }
-.sidebar-status { font-size: 11px; color: #475569; display: flex; align-items: center; gap: 8px; order: 1; opacity: 0.8; }
-.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.12); }
+.sidebar-footer { margin-top: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; border-top: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2); }
+.zoe-sidebar-user { display: flex; flex-direction: column; gap: 12px; }
+.zoe-user-info-row { display: flex; align-items: center; gap: 10px; }
+.zoe-user-avatar { width: 32px; height: 32px; border-radius: 50%; background: #6366f1; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.zoe-user-details { display: flex; flex-direction: column; }
+.zoe-user-details strong { font-size: 13px; color: #f8fafc; }
+.zoe-user-details small { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+.zoe-user-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sidebar-admin-btn { background: rgba(20, 184, 166, 0.1); color: #14b8a6; text-decoration: none; padding: 6px; border-radius: 6px; font-size: 11px; font-weight: 600; text-align: center; border: 1px solid rgba(20, 184, 166, 0.2); }
+.sidebar-logout-btn { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); padding: 6px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
+.sidebar-status { font-size: 10px; color: #475569; display: flex; align-items: center; gap: 6px; opacity: 0.7; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
 
 /* ---------- Main ---------- */
 .main { padding: 28px 36px; overflow-y: auto; }
