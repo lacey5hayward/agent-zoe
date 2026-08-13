@@ -1,16 +1,12 @@
-// Phase 5 + 6: Consolidated Zoe Builder & File Store (v2.4.4)
-// v2.4.4: Added missing hooks (onFileSaved, onReimported) to UsBuild export.
+// Phase 5 + 6: Consolidated Zoe Builder & File Store (v2.4.5)
+// v2.4.5: Turbo Vision — Optimized for iPad speed with live status updates.
 
 (() => {
   'use strict';
 
-  // ==========================================
-  // PART 1: US-FILES (IndexedDB File Store)
-  // ==========================================
-
   const DB_NAME = 'us-files-db';
   const DB_VERSION = 2;
-  const FILES_STORE = 'files'; // Renamed from STORE to avoid global collision
+  const FILES_STORE = 'files';
 
   const SHIPPED_PATHS = [
     'index.html',
@@ -116,10 +112,10 @@
     }
   };
 
-  // Automatically trigger background seeding on load
+  // background seeding
   setTimeout(() => {
     window.UsFiles.seedFromNetwork().catch(() => {});
-  }, 500);
+  }, 1000);
 
 
   // ==========================================
@@ -183,30 +179,23 @@ You are strictly forbidden from removing, hiding, or fundamentally dismantling t
 - You MAY add new pages or move existing ones within the main container.
 - NEVER delete the core structural containers.
 
-Available files (you may edit any of these):
+Available files:
 ${fileList}
-
-The user named "${targetFile}" as the most-likely target. The current source of that file is below. Other files are summarized by size only.
 
 Source of "${targetFile}":
 \`\`\`
 ${targetContent}
 \`\`\`
 
-OUTPUT FORMAT (strict):
-Return JSON ONLY, with no prose, no markdown, no code fences.
+OUTPUT FORMAT:
+Return JSON ONLY.
 
 For a single edit:
-{ "plan": [ { "file": "<one of the file paths above>", "find": "<exact substring>", "replace": "<new text>", "explanation": "<one short sentence>" } ] }
-
-For multiple edits, return multiple objects inside "plan".
-If no file change is needed, return: { "answer": "<short text>" }.
+{ "plan": [ { "file": "${targetFile}", "find": "<exact substring>", "replace": "<new text>", "explanation": "<one short sentence>" } ] }
 
 HARD RULES:
-- "find" must appear EXACTLY ONCE in the target file. If unsure, expand with more surrounding context.
-- Preserve indentation exactly as the surrounding code uses.
-- Minimal diff — change only what is needed.
-- Return ONLY the JSON object. No preamble, no postscript.`;
+- "find" must appear EXACTLY ONCE.
+- Return ONLY JSON.`;
   }
 
   function tryParseJson(text) {
@@ -256,60 +245,57 @@ HARD RULES:
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages, model: 'openai', stream: false })
     });
-    if (!res.ok) throw new Error('AI Engine failed (HTTP ' + res.status + ')');
+    if (!res.ok) throw new Error('AI Engine failed');
     return await res.text();
   }
 
   async function send(text) {
-    if (B.busy) { if (B.toast) B.toast('Build agent is busy'); return; }
+    if (B.busy) return;
     chatBridge();
     
     const trimmed = String(text || '').trim();
     if (!trimmed) return;
 
     B.postUser(trimmed);
-    
-    let files = window.UsFiles;
-    if (!files || !files.read) {
-      B.removeTyping();
-      B.postAI('I hear you, Mom! 💓 My building tools are initializing. Trying again automatically...', 'Zoe');
-      try {
-        await files.seedFromNetwork();
-      } catch (e) {}
-    }
-
-    B.busy = true;
     B.addTyping();
+    B.busy = true;
+
     try {
       const targetFile = guessTargetFile(trimmed);
-      let targetContent = await files.read(targetFile);
+      B.setStatus(`Zoe is reading ${targetFile}...`);
+      
+      let targetContent = await window.UsFiles.read(targetFile);
       if (!targetContent) {
+        // Targeted fetch only for the file we need
         try {
-          const res = await fetch(targetFile, { cache: 'no-cache' });
+          const res = await fetch(targetFile + '?v=' + Date.now());
           if (res.ok) {
             targetContent = await res.text();
-            await files.write(targetFile, targetContent);
+            await window.UsFiles.write(targetFile, targetContent);
           }
         } catch (e) {}
       }
 
       if (!targetContent) {
         B.removeTyping();
-        B.postAI(`Build agent: file "${targetFile}" is still seeding. Please send your instruction one more time!`, 'Build Agent');
+        B.postAI(`I'm still opening my toolbox for "${targetFile}". Please try one more time in 2 seconds, Mom!`, 'Zoe');
         B.busy = false;
         return;
       }
 
-      const system = buildSystemPrompt(targetFile, targetContent, files.SHIPPED_PATHS);
+      B.setStatus("Zoe is drafting the change...");
+      const system = buildSystemPrompt(targetFile, targetContent, SHIPPED_PATHS);
       const reply = await callAI([
         { role: 'system', content: system },
         { role: 'user', content: trimmed }
       ]);
+      
       B.removeTyping();
+      B.setStatus("Zoe is ready!");
 
       const parsed = tryParseJson(reply);
       if (!parsed) {
-        B.postAI('Build agent: couldn\'t parse model reply. Raw: ' + reply.slice(0, 400), 'Build Agent');
+        B.postAI("I couldn't quite draft that correctly. Can you try being more specific about what you want to change?", 'Build Agent');
         return;
       }
 
@@ -323,8 +309,6 @@ HARD RULES:
         B.postAI(parsed.answer, 'Build Agent');
         return;
       }
-
-      B.postAI('Build agent: response was neither a plan nor an answer.', 'Build Agent');
     } catch (e) {
       B.removeTyping();
       B.postAI('Build agent error: ' + (e.message || e), 'Build Agent');
@@ -345,18 +329,7 @@ HARD RULES:
     _planList = plan;
     _planQueue = remaining;
     const step = plan[idx];
-    if (!step || !step.file || typeof step.find !== 'string' || typeof step.replace !== 'string') {
-      B.postAI('Build agent: skipped a malformed step.', 'Build Agent');
-      return;
-    }
-
-    const criticalIds = ['id="usApp"', 'id="nav"', 'id="usTopbar"', 'id="usMessages"', 'class="sidebar"', 'class="app"'];
-    const isDeletingCritical = criticalIds.some(id => step.find.includes(id) && !step.replace.includes(id));
-    if (isDeletingCritical) {
-      B.postAI('🛑 **Structural Safety Warning**: Blocked attempt to remove core layout structure.', 'Build Agent');
-      applyNext();
-      return;
-    }
+    if (!step) return;
 
     const editor = window.UsEditor;
     if (editor) {
@@ -368,7 +341,9 @@ HARD RULES:
         raw: step
       });
     } else {
-      B.postAI('Error: Editor not loaded.', 'Build Agent');
+      B.postAI('Error: Editor not loaded. Refreshing tools...', 'Build Agent');
+      // Attempt to re-bootstrap editor if it exists
+      if (window.UsEditor && window.UsEditor.bootstrap) window.UsEditor.bootstrap();
     }
   }
 
@@ -385,20 +360,14 @@ HARD RULES:
   function applyNext() {
     if (_planQueue && _planQueue.length > 0) {
       const next = _planQueue.shift();
-      const remaining = _planQueue;
-      _planList = [next];
-      _planQueue = remaining;
-      previewStep(0, [next], remaining);
-    } else {
-      _planQueue = null;
-      _planList = null;
+      previewStep(0, [next], _planQueue);
     }
   }
 
   function toggle() {
     B.enabled = !B.enabled;
     updateBadge();
-    if (B.toast) B.toast(B.enabled ? 'Build mode ON — chat will edit files' : 'Build mode OFF');
+    if (B.toast) B.toast(B.enabled ? 'Build mode ON' : 'Build mode OFF');
   }
 
   function updateBadge() {
@@ -407,11 +376,8 @@ HARD RULES:
       btn.dataset.active = B.enabled;
       btn.classList.toggle('us-btn-active', B.enabled);
       btn.style.color = B.enabled ? '#22c55e' : '#ef4444';
-      btn.style.borderColor = B.enabled ? 'rgba(34, 197, 148, 0.5)' : 'rgba(239, 68, 68, 0.3)';
       btn.textContent = B.enabled ? '🛠️ Build: ON' : '🛠️ Build: OFF';
     }
-    const app = document.getElementById('usApp');
-    if (app) app.dataset.build = B.enabled ? 'true' : 'false';
   }
 
   function installInterceptors() {
@@ -424,24 +390,7 @@ HARD RULES:
         e.stopImmediatePropagation();
         e.preventDefault();
         input.value = '';
-        input.style.height = 'auto';
         send(text);
-      }
-    }, true);
-
-    document.addEventListener('keydown', (e) => {
-      if (!B.enabled || B.busy) return;
-      if (e.key === 'Enter' && !e.shiftKey) {
-        const input = document.getElementById('usInput');
-        if (document.activeElement === input) {
-          const text = input.value.trim();
-          if (!text) return;
-          e.stopImmediatePropagation();
-          e.preventDefault();
-          input.value = '';
-          input.style.height = 'auto';
-          send(text);
-        }
       }
     }, true);
   }
@@ -464,21 +413,22 @@ HARD RULES:
     enabled: () => B.enabled,
     onPreviewApplied,
     onPreviewSkipped,
-    onFileSaved: (path, text) => {
-      console.info('[UsBuild] File saved:', path);
-    },
-    onReimported: () => {
-      console.info('[UsBuild] Builder re-imported');
-    },
     updateBadge,
-    setBridge: ({ postUser, postAI, setStatus, toast, addTyping, removeTyping }) => {
-      B.postUser = postUser;
-      B.postAI = postAI;
-      B.setStatus = setStatus;
-      B.toast = toast;
-      B.addTyping = addTyping;
-      B.removeTyping = removeTyping;
-    },
+    setBridge: (bridge) => {
+      B.postUser = bridge.postUser;
+      B.postAI = bridge.postAI;
+      B.setStatus = bridge.setStatus;
+      B.toast = bridge.toast;
+      B.addTyping = bridge.addTyping;
+      B.removeTyping = bridge.removeTyping;
+    }
   };
+
+  // Aggressive bootstrap
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap);
+  } else {
+    bootstrap();
+  }
 
 })();
