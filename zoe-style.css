@@ -3219,7 +3219,8 @@ a:hover { text-decoration: underline; }
   display: none;
   flex-direction: column;
   gap: 2px;
-  margin-right: 15px; /* Spacious gap after hearts */
+  margin-left: auto; /* Push to the far right */
+  margin-right: 10px;
   padding: 4px 10px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 8px;
