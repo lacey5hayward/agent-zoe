@@ -3180,3 +3180,26 @@ a:hover { text-decoration: underline; }
 
 /* ── Zoe AI avatar uses robot emoji ── */
 .us-app .us-msg-ai .us-msg-avatar::after { content: ''; }
+
+/* ---------- Zelda 20-Heart Status Bar (v2.4.7) ---------- */
+.zelda-hearts {
+  display: inline-flex;
+  gap: 1px;
+  align-items: center;
+  margin-left: 10px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  vertical-align: middle;
+}
+.zelda-heart {
+  font-size: 10px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.8));
+  animation: heartPulse 2s ease-in-out infinite alternate;
+}
+@keyframes heartPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1); }
+}
