@@ -5,9 +5,9 @@
   <script>
     // NUCLEAR RESET v2.4.2: Clear everything for consolidated builder
     (function() {
-      var VER = '2.9.8';
+      var VER = '2.9.8a';
       if (localStorage.getItem('zoe-version') !== VER) {
-        // v2.9.8: Copy All Keys — Added "Copy All Keys for Cloudflare" button in settings
+        // v2.9.8a: Cloud Vault Sync — Successfully migrated all keys to Cloudflare Secrets
         localStorage.setItem('zoe-version', VER);
         // Do NOT clear localStorage so user keys are fully preserved!
       }
@@ -214,7 +214,7 @@
                 <div class="us-brand">
                   <button class="us-btn us-btn-icon" id="zoeSidebarToggle" title="Toggle channel list" aria-label="Toggle channel list">☰</button>
                   <span class="us-brand-icon">🤖</span>
-                  <span class="us-brand-name">Zoe <small style="font-size: 9px; opacity: 0.5; font-weight: normal;">v2.9.8</small></span>
+                  <span class="us-brand-name">Zoe <small style="font-size: 9px; opacity: 0.5; font-weight: normal;">v2.9.8a</small></span>
                   <button class="us-btn us-btn-ghost us-btn-sm" id="usBuildBtn" style="margin-left: 10px; font-size: 11px; padding: 4px 8px;">🛠️ Build Mode</button>
                   <!-- Channel switcher: replaces the removed sidebar -->
                   <div class="zoe-channel-switcher">
