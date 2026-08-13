@@ -233,7 +233,8 @@ HARD RULES: "find" must be unique. JSON only.`;
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Cloud build failed' }));
-        throw new Error(err.error || 'Cloud build failed');
+        const msg = err.diagnostic ? `${err.error} (${err.diagnostic})` : (err.error || 'Cloud build failed');
+        throw new Error(msg);
       }
 
       const parsed = await res.json();

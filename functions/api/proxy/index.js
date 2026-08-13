@@ -1,6 +1,6 @@
 // ============================================================================
 // /api/proxy — Unified AI proxy (Phase 7: generic engine + 429 fallback)
-// v2.6.7: Cloud Builder Integration
+// v2.6.8: Hydra Diagnostics & Robust Cloud Builder
 // ============================================================================
 
 const GITHUB_OWNER = 'lacey5hayward';
@@ -97,9 +97,14 @@ async function callEngine(engineId, payload, env) {
           method: 'POST', headers,
           body: JSON.stringify({ model: m, messages: [{ role: 'system', content: payload.sysPrompt }, ...payload.messages], temperature: 0.7, max_tokens: 2048 })
         });
-        if (!res.ok) throw { kind: 'http', status: res.status, body: await res.text() };
+        if (!res.ok) {
+          const body = await res.text().catch(() => 'No body');
+          throw { kind: 'http', status: res.status, body: body.slice(0, 300) };
+        }
         const data = await res.json();
-        return { engine: engineId, text: data.choices[0].message.content, modelUsed: m };
+        const text = data.choices?.[0]?.message?.content;
+        if (!text) throw { kind: 'empty', engine: engineId };
+        return { engine: engineId, text: text, modelUsed: m };
       } catch (e) { lastErr = e; }
     }
     throw lastErr;
@@ -107,6 +112,7 @@ async function callEngine(engineId, payload, env) {
   if (engineId === 'gemini') {
     const cfg = SPECIAL.gemini;
     const key = payload.localKey || env[cfg.secret];
+    if (!key) throw { kind: 'missing-key', engine: 'gemini' };
     const url = cfg.url({ model: payload.model }).replace('__KEY__', key);
     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg.formatBody(payload)) });
     if (!res.ok) throw { kind: 'http', status: res.status, body: await res.text() };
@@ -127,24 +133,48 @@ async function callWithFallback(chain, payload, env) {
       if (err.status === 429 || err.status === 402) memoRateLimit(engineId, err.status);
     }
   }
-  throw { kind: 'all-failed', tried };
+  const e = new Error('All engines failed');
+  e.kind = 'all-failed';
+  e.tried = tried;
+  throw e;
 }
 
-// v2.6.7: Cloud Builder Logic
+// v2.6.8: Cloud Builder Logic with Full Diagnostics
 async function handleBuildRequest(body, env) {
   const { instruction, targetFile } = body;
   const token = env.GITHUB_TOKEN;
-  if (!token) return jsonResponse({ error: 'GITHUB_TOKEN not set' }, 500);
+  
+  if (!token) {
+    return jsonResponse({ 
+      error: 'GITHUB_TOKEN not set in Cloudflare',
+      diagnostic: 'Please add GITHUB_TOKEN to Cloudflare Pages → Settings → Environment Variables'
+    }, 500);
+  }
 
-  // 1. Fetch file from GitHub
-  const getUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${targetFile}?ref=${GITHUB_BRANCH}`;
-  const getRes = await fetch(getUrl, { headers: { 'Authorization': `token ${token}`, 'User-Agent': 'Zoe-Cloud-Builder' } });
-  if (!getRes.ok) return jsonResponse({ error: 'Failed to fetch file from GitHub' }, 502);
-  const fileData = await getRes.json();
-  const content = atob(fileData.content.replace(/\n/g, ''));
+  try {
+    // 1. Fetch file from GitHub
+    const getUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${targetFile}?ref=${GITHUB_BRANCH}`;
+    const getRes = await fetch(getUrl, { 
+      headers: { 
+        'Authorization': `token ${token}`, 
+        'User-Agent': 'Zoe-Cloud-Builder',
+        'Accept': 'application/vnd.github.v3+json'
+      } 
+    });
 
-  // 2. Call AI to draft edit
-  const sysPrompt = `You are Zoe's Building Agent. You edit source code.
+    if (!getRes.ok) {
+      const errText = await getRes.text();
+      return jsonResponse({ 
+        error: `GitHub fetch failed (${getRes.status})`,
+        diagnostic: errText.slice(0, 200)
+      }, 502);
+    }
+
+    const fileData = await getRes.json();
+    const content = atob(fileData.content.replace(/\n/g, ''));
+
+    // 2. Call AI to draft edit
+    const sysPrompt = `You are Zoe's Building Agent. You edit source code.
 Target File: ${targetFile}
 Content:
 ${content}
@@ -156,14 +186,21 @@ Respond ONLY with a JSON plan:
   ]
 }`;
 
-  try {
-    const aiRes = await callWithFallback(['openrouter', 'kilo', 'opencode', 'llm7'], { messages: [{ role: 'user', content: instruction }], sysPrompt }, env);
-    let text = aiRes.text;
-    const start = text.indexOf('{'), end = text.lastIndexOf('}');
-    if (start >= 0 && end > start) text = text.slice(start, end + 1);
-    return jsonResponse(JSON.parse(text));
+    const chain = ['openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'];
+    try {
+      const aiRes = await callWithFallback(chain, { messages: [{ role: 'user', content: instruction }], sysPrompt }, env);
+      let text = aiRes.text;
+      const start = text.indexOf('{'), end = text.lastIndexOf('}');
+      if (start >= 0 && end > start) text = text.slice(start, end + 1);
+      return jsonResponse(JSON.parse(text));
+    } catch (aiErr) {
+      return jsonResponse({ 
+        error: 'All Cloud AI engines failed',
+        diagnostic: aiErr.tried ? aiErr.tried.map(t => `${t.engine}: ${t.error.status || t.error.kind}`).join(', ') : String(aiErr)
+      }, 502);
+    }
   } catch (e) {
-    return jsonResponse({ error: 'Cloud AI failed: ' + e.message }, 502);
+    return jsonResponse({ error: 'Cloud build crashed', diagnostic: e.message }, 500);
   }
 }
 
