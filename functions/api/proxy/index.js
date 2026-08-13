@@ -16,7 +16,12 @@ const OPENAI_COMPAT = {
   llm7: { id: 'llm7', url: 'https://api.llm7.io/v1/chat/completions', model: 'gpt-4o', secret: null, label: 'LLM7 (keyless)' },
   opencode: { id: 'opencode', url: 'https://opencode.ai/zen/v1/chat/completions', model: 'gpt-4o-mini', secret: null, label: 'OpenCode Zen (keyless)' },
   bazaarlink: { id: 'bazaarlink', url: 'https://bazaarlink.ai/api/v1/chat/completions', model: 'auto:free', secret: null, label: 'BazaarLink (keyless)' },
-  nvidia: { id: 'nvidia', url: 'https://integrate.api.nvidia.com/v1/chat/completions', model: 'meta/llama-3.1-70b-instruct', secret: null, label: 'NVIDIA NIM (keyless)' },
+  nvidia: { id: 'nvidia', url: 'https://integrate.api.nvidia.com/v1/chat/completions', model: 'meta/llama-3.1-70b-instruct', secret: 'NVIDIA_API_KEY', label: 'NVIDIA NIM' },
+  cerebras: { id: 'cerebras', url: 'https://api.cerebras.ai/v1/chat/completions', model: 'llama3.1-70b', secret: 'CEREBRAS_API_KEY', label: 'Cerebras' },
+  sambanova: { id: 'sambanova', url: 'https://api.sambanova.ai/v1/chat/completions', model: 'Meta-Llama-3.1-8B-Instruct', secret: 'SAMBANOVA_API_KEY', label: 'SambaNova' },
+  cohere: { id: 'cohere', url: 'https://api.cohere.com/v1/chat/completions', model: 'command-r-plus', secret: 'COHERE_API_KEY', label: 'Cohere' },
+  together: { id: 'together', url: 'https://api.together.xyz/v1/chat/completions', model: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo', secret: 'TOGETHER_API_KEY', label: 'Together AI' },
+  fireworks: { id: 'fireworks', url: 'https://api.fireworks.ai/inference/v1/chat/completions', model: 'accounts/fireworks/models/llama-v3-70b-instruct', secret: 'FIREWORKS_API_KEY', label: 'Fireworks AI' },
   openrouter: {
     id: 'openrouter',
     url: 'https://openrouter.ai/api/v1/chat/completions',

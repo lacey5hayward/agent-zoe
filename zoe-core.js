@@ -2396,7 +2396,7 @@ Rules:
   }
 
   function renderEngineStatuses() {
-    var list = ['openrouter', 'gemini', 'groq', 'deepseek', 'mistral', 'huggingface'];
+    var list = ['openrouter', 'gemini', 'groq', 'deepseek', 'mistral', 'huggingface', 'cerebras', 'sambanova', 'cohere', 'together', 'fireworks', 'nvidia'];
     if (!PROXY_STATUS || !PROXY_STATUS.proxyLive) {
       list.forEach(function(id) { 
         var statusId = id === 'openrouter' ? 'openrouterServer' : id;
@@ -2513,7 +2513,7 @@ Rules:
   }
 
   async function refreshKeys() {
-    const all = ['openrouter', 'gemini', 'groq', 'deepseek', 'mistral', 'huggingface'];
+    const all = ['openrouter', 'gemini', 'groq', 'deepseek', 'mistral', 'huggingface', 'cerebras', 'sambanova', 'cohere', 'together', 'fireworks', 'nvidia'];
     all.forEach(id => setStatusEl(id, '⏳ checking…', ''));
     // Phase 13: OpenRouter key is browser-side, so test it directly.
     if (STATE.keys && STATE.keys.openrouter && ENGINES.openrouter && ENGINES.openrouter.test) {

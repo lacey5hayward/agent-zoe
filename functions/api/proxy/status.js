@@ -31,6 +31,12 @@ const ENGINE_SECRETS = {
   azure:       'AZURE_OPENAI_API_KEY',
   oracle:      'ORACLE_API_KEY',
   openrouter:  'OPENROUTER_API_KEY',
+  cerebras:    'CEREBRAS_API_KEY',
+  sambanova:   'SAMBANOVA_API_KEY',
+  cohere:      'COHERE_API_KEY',
+  together:    'TOGETHER_API_KEY',
+  fireworks:   'FIREWORKS_API_KEY',
+  nvidia:      'NVIDIA_API_KEY',
 };
 
 // Engines that are always available (no secret required)
