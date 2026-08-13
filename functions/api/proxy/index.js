@@ -1,6 +1,6 @@
 // ============================================================================
 // /api/proxy — Unified AI proxy (Phase 7: generic engine + 429 fallback)
-// v2.7.7: Deep Gemini Diagnostics — Revealing the 404 Ghost
+// v2.7.9: Gemini Model Hunter — Searching for a Working Brain
 // ============================================================================
 
 const GITHUB_OWNER = 'lacey5hayward';
@@ -85,22 +85,29 @@ async function callEngine(engineId, payload, env) {
   if (engineId === 'gemini') {
     const cfg = SPECIAL.gemini;
     let key = payload.localKey || await getSecret('GEMINI_API_KEY', env);
-    if (!key) throw { kind: 'missing-key', engine: 'gemini', message: 'GEMINI_API_KEY secret not found in Cloudflare Environment or KV' };
+    if (!key) throw { kind: 'missing-key', engine: 'gemini', message: 'GEMINI_API_KEY not found' };
     
+    // v2.7.9: Gemini Model Hunter — Trying multiple models and versions
+    const models = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
     const versions = ['v1', 'v1beta'];
     let lastErr = null;
-    for (const ver of versions) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/${ver}/models/${payload.model || 'gemini-1.5-flash'}:generateContent?key=${key}`;
-        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg.formatBody(payload)) });
-        const errBody = await res.text().catch(() => 'No body');
-        if (res.ok) {
-          let data;
-          try { data = JSON.parse(errBody); } catch (e) { throw { kind: 'json-parse', body: errBody }; }
-          return { engine: 'gemini', text: cfg.extractText(data), verUsed: ver };
-        }
-        lastErr = { kind: 'http', status: res.status, body: errBody.slice(0, 500) };
-      } catch (e) { lastErr = e; }
+
+    for (const model of models) {
+      for (const ver of versions) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent?key=${key}`;
+          const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg.formatBody(payload)) });
+          const errBody = await res.text().catch(() => 'No body');
+          if (res.ok) {
+            let data;
+            try { data = JSON.parse(errBody); } catch (e) { throw { kind: 'json-parse', body: errBody }; }
+            return { engine: 'gemini', text: cfg.extractText(data), modelUsed: model, verUsed: ver };
+          }
+          // If not 404, it might be a key or rate limit issue, so we capture it
+          if (res.status !== 404) throw { kind: 'http', status: res.status, body: errBody.slice(0, 500) };
+          lastErr = { kind: 'http', status: res.status, body: errBody.slice(0, 500), model, ver };
+        } catch (e) { lastErr = e; }
+      }
     }
     throw lastErr;
   }
@@ -151,7 +158,7 @@ async function handleBuildRequest(body, env) {
 
     const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${slimContent}`;
     
-    // v2.7.7: Gemini Only (Hydra Sleeping)
+    // v2.7.9: Gemini Only (Hydra Sleeping)
     const chain = ['gemini'];
     
     try {
@@ -162,7 +169,7 @@ async function handleBuildRequest(body, env) {
       return jsonResponse(JSON.parse(text));
     } catch (aiErr) {
       const diag = aiErr.tried ? aiErr.tried.map(t => `${t.engine}: [status=${t.error.status || t.error.kind}] ${t.error.body || t.error.message || JSON.stringify(t.error)}`).join(' | ') : String(aiErr);
-      return jsonResponse({ error: 'Gemini brain failed with deep diagnostic', diagnostic: diag }, 502);
+      return jsonResponse({ error: 'Gemini brain failed', diagnostic: diag }, 502);
     }
   } catch (e) { return jsonResponse({ error: 'Cloud build crashed', diagnostic: e.message }, 500); }
 }
