@@ -317,8 +317,21 @@ HARD RULES: "find" must be unique. JSON only.`;
     }, true);
   }
 
+  async function deploy(path, content, message) {
+    try {
+      const res = await fetch('/api/deploy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path, content, message })
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
   window.UsBuild = {
-    bootstrap, send, toggle, enabled: () => B.enabled,
+    bootstrap, send, toggle, deploy, enabled: () => B.enabled,
     onPreviewApplied, onPreviewSkipped, updateBadge,
     setBridge: (bridge) => {
       B.postUser = bridge.postUser; B.postAI = bridge.postAI;

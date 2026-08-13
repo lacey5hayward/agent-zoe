@@ -33,6 +33,7 @@ function enterViewMode(path, text) {
   $('#usEditorSave').classList.remove('hidden');
   $('#usEditorRevert').classList.remove('hidden');
   $('#usEditorApply').classList.add('hidden');
+  $('#usEditorDeploy').style.display = 'none';
   $('#usEditorSkip').classList.add('hidden');
   $('#usEditorReload').classList.add('hidden');
   $('#usEditorSave').disabled = true;
@@ -58,9 +59,11 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
   $('#usEditorSave').classList.add('hidden');
   $('#usEditorRevert').classList.add('hidden');
   $('#usEditorApply').classList.remove('hidden');
+  $('#usEditorDeploy').style.display = 'inline-block';
   $('#usEditorSkip').classList.remove('hidden');
   $('#usEditorReload').classList.add('hidden');
   $('#usEditorApply').disabled = false;
+  $('#usEditorDeploy').disabled = false;
   $('#usEditorSkip').disabled = false;
   $('#usEditorModal').classList.add('open');
   setTimeout(() => $('#usEditorTextarea').focus(), 50);
@@ -141,6 +144,58 @@ async function applyPreview() {
   if (BUILD() && BUILD().onPreviewApplied) BUILD().onPreviewApplied({ file, find, replace, explanation: E.proposed.explanation });
   E.mode = 'view';
   E.proposed = null;
+}
+
+async function deployToGitHub() {
+  const path = E.currentPath;
+  if (!path) return;
+  
+  let content;
+  if (E.mode === 'preview' && E.proposed) {
+    const { find } = E.proposed;
+    const replace = $('#usEditorTextarea').value;
+    const original = await FILES.read(path);
+    const idx = original.indexOf(find);
+    if (idx === -1) {
+      toast('Cannot deploy: Find string no longer matches', 'error');
+      return;
+    }
+    content = original.slice(0, idx) + replace + original.slice(idx + find.length);
+  } else {
+    content = $('#usEditorTextarea').value;
+  }
+
+  const btn = $('#usEditorDeploy');
+  const oldText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '🚀 Deploying...';
+  
+  try {
+    const build = BUILD();
+    if (!build || !build.deploy) throw new Error('Build agent deploy tool not loaded');
+    
+    const res = await build.deploy(path, content);
+    if (res.success) {
+      toast('Successfully deployed to GitHub!', 'success');
+      // If we were in preview, close modal and finish the plan
+      if (E.mode === 'preview') {
+        await applyPreview(); // This will update local files too
+      } else {
+        E.dirty = false;
+        E.originalText = content;
+        $('#usEditorSave').disabled = true;
+        await applyLive(path, content);
+      }
+    } else {
+      throw new Error(res.error || 'Deployment failed');
+    }
+  } catch (e) {
+    toast('Deploy failed: ' + e.message, 'error');
+    console.error('[Deploy]', e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
 }
 
 function skipPreview() {
@@ -314,6 +369,7 @@ function bootstrap() {
     if (t.closest('#usEditorSave')) { saveCurrent(); return; }
     if (t.closest('#usEditorRevert')) { revertCurrent(); return; }
     if (t.closest('#usEditorApply')) { applyPreview(); return; }
+    if (t.closest('#usEditorDeploy')) { deployToGitHub(); return; }
     if (t.closest('#usEditorSkip')) { skipPreview(); return; }
     if (t.closest('#usEditorReloadBtn')) { location.reload(); return; }
   });
