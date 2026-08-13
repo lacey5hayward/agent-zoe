@@ -83,20 +83,18 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     deployBtn.ontouchstart = triggerDeploy;
     deployBtn.ontouchend = triggerDeploy;
 
-    // v2.8.9: Global Touch Radar — Catch the touch even if the button "misses" it
-    const globalTouchRadar = (e) => {
+    // v2.9.0: The Infinite Horizon — Touch ANYWHERE to deploy
+    const infiniteHorizon = (e) => {
       if (E.mode !== 'preview' || !deployBtn || deployBtn.style.display === 'none') return;
-      const touch = e.touches ? e.touches[0] : e;
-      const rect = deployBtn.getBoundingClientRect();
-      // Expand hit zone by 30px
-      if (touch.clientX >= rect.left - 30 && touch.clientX <= rect.right + 30 &&
-          touch.clientY >= rect.top - 30 && touch.clientY <= rect.bottom + 30) {
-        console.log('[v2.8.9] Global Radar caught touch!');
-        triggerDeploy(e);
-      }
+      if (deployBtn.disabled) return;
+      
+      console.log('[v2.9.0] Infinite Horizon triggered by:', e.type);
+      triggerDeploy(e);
     };
-    window.addEventListener('touchstart', globalTouchRadar, { passive: false });
-    window.addEventListener('mousedown', globalTouchRadar);
+    
+    // Attach to the highest level possible
+    document.documentElement.addEventListener('touchstart', infiniteHorizon, { passive: false, capture: true });
+    document.documentElement.addEventListener('click', infiniteHorizon, { capture: true });
   }
   if ($('#usEditorSkip')) $('#usEditorSkip').classList.remove('hidden');
   if ($('#usEditorReload')) $('#usEditorReload').classList.add('hidden');
