@@ -66,36 +66,53 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     // v2.8.5 Patch D: Physically move the button to the body to bypass any parent touch-blocking
     document.body.appendChild(deployBtn);
     
-    // v2.9.9: The Native Force — Simplified and Aggressive Event Binding
-    deployBtn.setAttribute('role', 'button');
-    deployBtn.setAttribute('aria-label', 'Deploy to GitHub');
+    // v3.0.0: Milestone Milestone — Native Topbar & Diagnostic Logging
+    const topbarBtn = $('#usTopbarDeploy');
     
     const triggerDeploy = (e) => {
-      console.log('[v2.9.9] DEPLOY SIGNAL RECEIVED:', e.type);
-      if (deployBtn.disabled) {
-        console.warn('[v2.9.9] Deploy blocked: Button is disabled');
-        return;
+      const type = e ? e.type : 'manual';
+      console.log('[v3.0.0] DEPLOY SIGNAL:', type);
+      if (deployBtn.disabled) return;
+      
+      // Visual feedback on both buttons
+      [deployBtn, topbarBtn].forEach(b => {
+        if (b) {
+          b.disabled = true;
+          b.style.opacity = '0.5';
+          b.textContent = '🚀 SENDING...';
+        }
+      });
+      
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
       }
-      
-      // Visual feedback
-      deployBtn.style.opacity = '0.5';
-      deployBtn.textContent = '🚀 SENDING...';
-      
-      e.preventDefault();
-      e.stopPropagation();
       
       toast('🚀 Sending to GitHub...', 'success');
       deployToGitHub().catch(err => {
-        console.error('[v2.9.9] DEPLOY ERROR:', err);
-        deployBtn.style.opacity = '1';
-        deployBtn.textContent = '🚀 DEPLOY TO GITHUB';
+        console.error('[v3.0.0] DEPLOY ERROR:', err);
+        [deployBtn, topbarBtn].forEach(b => {
+          if (b) {
+            b.disabled = false;
+            b.style.opacity = '1';
+            b.textContent = b === topbarBtn ? '🚀 DEPLOY NOW' : '🚀 DEPLOY TO GITHUB';
+          }
+        });
       });
     };
     
-    // Bind every possible event to the trigger
+    // Bind to the bottom button
     ['click', 'touchstart', 'touchend', 'mousedown'].forEach(evt => {
       deployBtn['on' + evt] = triggerDeploy;
     });
+    
+    // Bind to the topbar button (more native, less blocked)
+    if (topbarBtn) {
+      topbarBtn.style.display = 'inline-block';
+      ['click', 'touchstart', 'touchend', 'mousedown'].forEach(evt => {
+        topbarBtn['on' + evt] = triggerDeploy;
+      });
+    }
   }
   if ($('#usEditorSkip')) $('#usEditorSkip').classList.remove('hidden');
   if ($('#usEditorReload')) $('#usEditorReload').classList.add('hidden');
@@ -110,13 +127,15 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
 function closeFile() {
   if (E.mode === 'view' && E.dirty && !confirm('Unsaved changes will be lost. Close anyway?')) return;
   
-  // v2.8.5: Put the deploy button back where it belongs when closing
   const deployBtn = $('#usEditorDeploy');
+  const topbarBtn = $('#usTopbarDeploy');
   const foot = $('#usEditorModal .us-modal-foot');
+  
   if (deployBtn && foot) {
     deployBtn.style.display = 'none';
     foot.appendChild(deployBtn);
   }
+  if (topbarBtn) topbarBtn.style.display = 'none';
 
   $('#usEditorModal').classList.remove('open');
   document.body.classList.remove('us-editor-open');
