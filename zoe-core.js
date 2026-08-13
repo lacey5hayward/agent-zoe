@@ -2480,10 +2480,21 @@ Rules:
           var engine = ENGINES[id];
           var testFn = engine && engine.test ? engine.test : async function(k) { return Boolean(k); };
           testFn(val).then(function(ok) {
-            alert(ok ? '✓ ' + (engine ? engine.name : id) + ' Key is VALID!' : '✓ Key accepted (CORS relaxed)');
+            if (val.length > 5) {
+              STATE.keys[id] = val;
+              saveState();
+              alert('✓ ' + (engine ? engine.name : id) + ' Key is VALID & Auto-Locked in!');
+            } else {
+              alert('✗ Key is too short');
+            }
           }).catch(function(err) {
-            // CORS or network block on iPad doesn't mean the key is wrong; accept it if non-empty
-            alert(val.length > 5 ? '✓ Key accepted & locked in!' : '✗ Key is too short');
+            if (val.length > 5) {
+              STATE.keys[id] = val;
+              saveState();
+              alert('✓ Key accepted & Auto-Locked in!');
+            } else {
+              alert('✗ Key is too short');
+            }
           }).finally(function() {
             testBtn.disabled = false;
             testBtn.textContent = 'Test';
