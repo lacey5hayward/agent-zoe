@@ -1,6 +1,6 @@
 // ============================================================================
 // /api/proxy — Unified AI proxy (Phase 7: generic engine + 429 fallback)
-// v2.7.3: Hydra Sleep — Gemini Only (Temporary Disconnect)
+// v2.7.4: Gemini Address Fix — Official v1 Endpoint
 // ============================================================================
 
 const GITHUB_OWNER = 'lacey5hayward';
@@ -34,7 +34,7 @@ const OPENAI_COMPAT = {
 const SPECIAL = {
   gemini: {
     id: 'gemini', label: 'Gemini', secret: 'GEMINI_API_KEY',
-    url: ({ model }) => `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-1.5-flash'}:generateContent?key=__KEY__`,
+    url: ({ model }) => `https://generativelanguage.googleapis.com/v1/models/${model || 'gemini-1.5-flash'}:generateContent?key=__KEY__`,
     formatBody: ({ messages, sysPrompt }) => ({
       contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
       systemInstruction: { parts: [{ text: sysPrompt }] },
@@ -119,7 +119,10 @@ async function callEngine(engineId, payload, env) {
     if (!key) throw { kind: 'missing-key', engine: 'gemini' };
     const url = cfg.url({ model: payload.model }).replace('__KEY__', key);
     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg.formatBody(payload)) });
-    if (!res.ok) throw { kind: 'http', status: res.status, body: await res.text() };
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => 'No body');
+      throw { kind: 'http', status: res.status, body: errBody.slice(0, 300) };
+    }
     const data = await res.json();
     return { engine: 'gemini', text: cfg.extractText(data) };
   }
@@ -167,7 +170,7 @@ async function handleBuildRequest(body, env) {
     const content = atob(fileData.content.replace(/\n/g, ''));
 
     const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${content}`;
-        // v2.7.3: Hydra Sleep — Gemini Only (Temporarily Disconnected)
+        // v2.7.4: Hydra Sleep — Gemini Only (Temporarily Disconnected)
     const chain = ['gemini'];
     try {
       const aiRes = await callWithFallback(chain, { messages: [{ role: 'user', content: instruction }], sysPrompt, localKey }, env);
@@ -194,7 +197,7 @@ export async function onRequestPost(context) {
   const { engine, chain, dna, persona, messages, sysPrompt, prompt, model, localKey } = body;
   const composedSysPrompt = (sysPrompt || '') + (dna ? `\n\n[DNA]\n${dna}` : '') + (persona ? `\n\n[Persona]\n${persona}` : '');
   try {
-    // v2.7.3: Hydra Sleep — Gemini Only (Temporarily Disconnected)
+    // v2.7.4: Hydra Sleep — Gemini Only (Temporarily Disconnected)
     const chainToUse = Array.isArray(chain) ? ['gemini'] : [engine || 'gemini'];
     const result = await callWithFallback(chainToUse, { messages, sysPrompt: composedSysPrompt, model, localKey }, context.env);
     return jsonResponse(result);
