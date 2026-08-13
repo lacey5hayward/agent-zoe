@@ -2465,15 +2465,37 @@ Rules:
     if ($('#usOpenrouterKey')) $('#usOpenrouterKey').value = (STATE.keys && STATE.keys.openrouter) || '';
     if ($('#usOpenrouterModel')) $('#usOpenrouterModel').value = STATE.openrouterModel || '';
 
-    // v2.9.3: Master Key Vault for all 11 providers
+    // v2.9.7: Master Key Vault with Read-Only Auto-Lock & Edit toggle
     var keyIds = ['gemini', 'groq', 'deepseek', 'mistral', 'huggingface', 'cerebras', 'sambanova', 'cohere', 'together', 'fireworks', 'nvidia'];
     keyIds.forEach(function(id) {
-      var el = $('#us' + id.charAt(0).toUpperCase() + id.slice(1) + 'Key');
-      if (el) el.value = (STATE.keys && STATE.keys[id]) || '';
-      var testBtn = $('#usTest' + id.charAt(0).toUpperCase() + id.slice(1) + 'Btn');
-      if (testBtn) {
+      var capId = id.charAt(0).toUpperCase() + id.slice(1);
+      var el = $('#us' + capId + 'Key');
+      var testBtn = $('#usTest' + capId + 'Btn');
+      var editBtn = $('#usEdit' + capId + 'Btn');
+      var val = (STATE.keys && STATE.keys[id]) || '';
+      
+      if (el) {
+        el.value = val;
+        if (val) {
+          el.disabled = true;
+          el.classList.add('us-key-verified');
+        } else {
+          el.disabled = false;
+          el.classList.remove('us-key-verified');
+        }
+      }
+
+      if (editBtn && el) {
+        editBtn.onclick = function() {
+          el.disabled = false;
+          el.focus();
+          toast('Unlocked ' + id + ' for editing', 'info');
+        };
+      }
+
+      if (testBtn && el) {
         testBtn.onclick = function() {
-          var val = el ? el.value.trim() : '';
+          var val = el.value.trim();
           if (!val) { alert('Please enter a key first!'); return; }
           testBtn.disabled = true;
           testBtn.textContent = '…';
@@ -2483,7 +2505,9 @@ Rules:
             if (val.length > 5) {
               STATE.keys[id] = val;
               saveState();
-              alert('✓ ' + (engine ? engine.name : id) + ' Key is VALID & Auto-Locked in!');
+              el.disabled = true;
+              el.classList.add('us-key-verified');
+              alert('✓ ' + (engine ? engine.name : id) + ' Key is VALID & Locked!');
             } else {
               alert('✗ Key is too short');
             }
@@ -2491,7 +2515,9 @@ Rules:
             if (val.length > 5) {
               STATE.keys[id] = val;
               saveState();
-              alert('✓ Key accepted & Auto-Locked in!');
+              el.disabled = true;
+              el.classList.add('us-key-verified');
+              alert('✓ Key accepted & Locked!');
             } else {
               alert('✗ Key is too short');
             }
