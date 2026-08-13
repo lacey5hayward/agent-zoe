@@ -1,6 +1,6 @@
 // ============================================================================
 // /api/proxy — Unified AI proxy (Phase 7: generic engine + 429 fallback)
-// v2.7.3: Hydra Disconnect — Gemini Only Brain
+// v2.7.4: Hydra Restoration — Gemini Led Team
 // ============================================================================
 
 const GITHUB_OWNER = 'lacey5hayward';
@@ -167,8 +167,8 @@ async function handleBuildRequest(body, env) {
     const content = atob(fileData.content.replace(/\n/g, ''));
 
     const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${content}`;
-        // v2.7.3: Disconnect Hydra — Gemini Only
-    const chain = ['gemini'];
+        // v2.7.4: Hydra Restored — Gemini Leads
+    const chain = ['gemini', 'openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'];
     try {
       const aiRes = await callWithFallback(chain, { messages: [{ role: 'user', content: instruction }], sysPrompt, localKey }, env);
       let text = aiRes.text;
@@ -194,11 +194,11 @@ export async function onRequestPost(context) {
   const { engine, chain, dna, persona, messages, sysPrompt, prompt, model, localKey } = body;
   const composedSysPrompt = (sysPrompt || '') + (dna ? `\n\n[DNA]\n${dna}` : '') + (persona ? `\n\n[Persona]\n${persona}` : '');
   try {
-    // v2.7.3: Disconnect Hydra — Force Gemini for all chat if no specific engine requested
-    const chainToUse = Array.isArray(chain) ? ['gemini'] : [engine || 'gemini'];
+    // v2.7.4: Hydra Restored — Prioritize Gemini
+    const chainToUse = Array.isArray(chain) ? chain : [engine || 'gemini', 'openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'];
     const result = await callWithFallback(chainToUse, { messages, sysPrompt: composedSysPrompt, model, localKey }, context.env);
     return jsonResponse(result);
-  } catch (err) { return jsonResponse({ error: 'Gemini brain failed', details: err }, 502); }
+  } catch (err) { return jsonResponse({ error: 'All engines failed', details: err }, 502); }
 }
 
 export async function onRequestOptions() { return new Response(null, { headers: corsHeaders() }); }

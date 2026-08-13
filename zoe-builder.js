@@ -182,8 +182,26 @@ HARD RULES: "find" must be unique. JSON only.`;
       lastError = `Proxy error: ${e.name === 'AbortError' ? 'Timeout (90s)' : e.message}`;
     }
 
-    // v2.7.3: Hydra Disconnected - No Emergency Fallback
-    throw new Error(lastError);
+    // v2.7.4: Hydra Restored - Emergency Fallback to OpenCode
+    try {
+      const res = await fetch('https://opencode.ai/zen/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          model: 'gpt-4o-mini',
+          messages: messages,
+          temperature: 0.7
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.choices[0].message.content || '';
+      }
+      const txt = await res.text().catch(() => '');
+      throw new Error(`OpenCode failed (${res.status}): ${txt.slice(0, 100)}`);
+    } catch (e) {
+      throw new Error(`${lastError} | Emergency brain failed: ${e.message}`);
+    }
   }
 
   async function send(text) {
