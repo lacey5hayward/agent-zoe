@@ -1,6 +1,6 @@
 // ============================================================================
 // /api/proxy — Unified AI proxy (Phase 7: generic engine + 429 fallback)
-// v2.6.8: Hydra Diagnostics & Robust Cloud Builder
+// v2.6.9: Master Key Alignment & Stable Free Models
 // ============================================================================
 
 const GITHUB_OWNER = 'lacey5hayward';
@@ -22,10 +22,10 @@ const OPENAI_COMPAT = {
   openrouter: {
     id: 'openrouter',
     url: 'https://openrouter.ai/api/v1/chat/completions',
-    model: 'meta-llama/llama-3.1-8b-instruct:free',
+    model: 'google/gemma-2-9b-it:free', // Switched to a more stable free model
     secret: 'OPENROUTER_API_KEY',
     label: 'OpenRouter',
-    fallbacks: ['google/gemma-2-9b-it:free', 'mistralai/mistral-7b-instruct:free', 'nvidia/nemotron-3-ultra-550b-a55b:free']
+    fallbacks: ['mistralai/mistral-7b-instruct:free', 'meta-llama/llama-3.1-8b-instruct:free']
   }
 };
 
@@ -85,7 +85,8 @@ function jsonResponse(obj, status = 200) {
 async function callEngine(engineId, payload, env) {
   if (OPENAI_COMPAT[engineId]) {
     const cfg = OPENAI_COMPAT[engineId];
-    const key = payload.localKey || (cfg.secret ? env[cfg.secret] : null);
+    // v2.6.9: Support localKey and fallback to MEMORY secret
+    const key = payload.localKey || (cfg.secret ? (env[cfg.secret] || env['MEMORY']) : env['MEMORY']);
     const headers = { 'Content-Type': 'application/json' };
     if (key) headers['Authorization'] = `Bearer ${key}`;
     const url = cfg.url;
@@ -139,9 +140,9 @@ async function callWithFallback(chain, payload, env) {
   throw e;
 }
 
-// v2.6.8: Cloud Builder Logic with Full Diagnostics
+// v2.6.9: Cloud Builder Logic with Master Key Alignment
 async function handleBuildRequest(body, env) {
-  const { instruction, targetFile } = body;
+  const { instruction, targetFile, localKey } = body;
   const token = env.GITHUB_TOKEN;
   
   if (!token) {
@@ -188,7 +189,7 @@ Respond ONLY with a JSON plan:
 
     const chain = ['openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'];
     try {
-      const aiRes = await callWithFallback(chain, { messages: [{ role: 'user', content: instruction }], sysPrompt }, env);
+      const aiRes = await callWithFallback(chain, { messages: [{ role: 'user', content: instruction }], sysPrompt, localKey }, env);
       let text = aiRes.text;
       const start = text.indexOf('{'), end = text.lastIndexOf('}');
       if (start >= 0 && end > start) text = text.slice(start, end + 1);

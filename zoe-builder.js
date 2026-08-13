@@ -221,13 +221,16 @@ HARD RULES: "find" must be unique. JSON only.`;
       // v2.6.7: Cloud Builder Integration
       // Instead of reading the file on the iPad, we send the instruction to the Worker.
       // The Worker reads the file from GitHub and calls the AI itself.
+      // v2.6.9: Pass localKey from browser settings to Cloud Builder
+      const localKey = localStorage.getItem('us-openrouter-key') || localStorage.getItem('us-universal-key');
       const res = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'build',
           instruction: trimmed,
-          targetFile: targetFile
+          targetFile: targetFile,
+          localKey: localKey
         })
       });
 
