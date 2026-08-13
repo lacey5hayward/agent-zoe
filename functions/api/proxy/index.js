@@ -1,6 +1,6 @@
 // ============================================================================
 // /api/proxy — Unified AI proxy (Phase 7: generic engine + 429 fallback)
-// v2.7.9: Gemini Model Hunter — Searching for a Working Brain
+// v2.8.0: The ListModels Probe — Automating the Brain Hunt
 // ============================================================================
 
 const GITHUB_OWNER = 'lacey5hayward';
@@ -87,29 +87,57 @@ async function callEngine(engineId, payload, env) {
     let key = payload.localKey || await getSecret('GEMINI_API_KEY', env);
     if (!key) throw { kind: 'missing-key', engine: 'gemini', message: 'GEMINI_API_KEY not found' };
     
-    // v2.7.9: Gemini Model Hunter — Trying multiple models and versions
-    const models = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
-    const versions = ['v1', 'v1beta'];
-    let lastErr = null;
-
-    for (const model of models) {
-      for (const ver of versions) {
-        try {
-          const url = `https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent?key=${key}`;
+    // v2.8.0: The ListModels Probe — Discovering working model names
+    try {
+      const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`;
+      const listRes = await fetch(listUrl);
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const availableModels = (listData.models || []).map(m => m.name.replace('models/', ''));
+        if (availableModels.length > 0) {
+          // Filter for Flash or Pro models
+          const flash = availableModels.find(m => m.includes('flash') && !m.includes('8b'));
+          const flash8b = availableModels.find(m => m.includes('flash') && m.includes('8b'));
+          const pro = availableModels.find(m => m.includes('pro'));
+          const bestModel = flash || flash8b || pro || availableModels[0];
+          
+          // Call with discovered model
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${bestModel}:generateContent?key=${key}`;
           const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg.formatBody(payload)) });
-          const errBody = await res.text().catch(() => 'No body');
           if (res.ok) {
-            let data;
-            try { data = JSON.parse(errBody); } catch (e) { throw { kind: 'json-parse', body: errBody }; }
-            return { engine: 'gemini', text: cfg.extractText(data), modelUsed: model, verUsed: ver };
+            const data = await res.json();
+            return { engine: 'gemini', text: cfg.extractText(data), modelUsed: bestModel, source: 'discovered' };
           }
-          // If not 404, it might be a key or rate limit issue, so we capture it
-          if (res.status !== 404) throw { kind: 'http', status: res.status, body: errBody.slice(0, 500) };
-          lastErr = { kind: 'http', status: res.status, body: errBody.slice(0, 500), model, ver };
-        } catch (e) { lastErr = e; }
+        }
       }
+    } catch (e) {}
+
+    // Fallback: Try OpenRouter Gemini if direct Google fails
+    const orKey = payload.localKey || await getSecret('OPENROUTER_API_KEY', env);
+    if (orKey) {
+      try {
+        const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${orKey}`,
+            'HTTP-Referer': 'https://agent-zoe.pages.dev',
+            'X-Title': 'Agent Zoe Social Hub'
+          },
+          body: JSON.stringify({ 
+            model: 'google/gemini-flash-1.5', 
+            messages: [{ role: 'system', content: payload.sysPrompt }, ...payload.messages],
+            temperature: 0.7 
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          return { engine: 'gemini', text: data.choices[0].message.content, source: 'openrouter-bridge' };
+        }
+      } catch (e) {}
     }
-    throw lastErr;
+
+    throw { kind: 'all-attempts-failed', engine: 'gemini', message: 'Direct and Bridge attempts failed' };
   }
   throw { kind: 'unknown-engine', engine: engineId };
 }
@@ -141,13 +169,13 @@ async function handleBuildRequest(body, env) {
 
     // Cloud Slimming
     let slimContent = content;
-    if (content.length > 15000) {
+    if (content.length > 10000) {
       const keywords = instruction.toLowerCase().split(/\s+/).filter(k => k.length > 3);
       const lines = content.split('\n');
       const relevantLines = new Set();
       lines.forEach((line, i) => {
         if (keywords.some(k => line.toLowerCase().includes(k))) {
-          for (let j = Math.max(0, i-60); j < Math.min(lines.length, i+60); j++) relevantLines.add(j);
+          for (let j = Math.max(0, i-40); j < Math.min(lines.length, i+40); j++) relevantLines.add(j);
         }
       });
       if (relevantLines.size > 0) {
@@ -158,7 +186,7 @@ async function handleBuildRequest(body, env) {
 
     const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${slimContent}`;
     
-    // v2.7.9: Gemini Only (Hydra Sleeping)
+    // v2.8.0: Gemini Only (Hydra Sleeping)
     const chain = ['gemini'];
     
     try {
@@ -168,7 +196,7 @@ async function handleBuildRequest(body, env) {
       if (start >= 0 && end > start) text = text.slice(start, end + 1);
       return jsonResponse(JSON.parse(text));
     } catch (aiErr) {
-      const diag = aiErr.tried ? aiErr.tried.map(t => `${t.engine}: [status=${t.error.status || t.error.kind}] ${t.error.body || t.error.message || JSON.stringify(t.error)}`).join(' | ') : String(aiErr);
+      const diag = aiErr.tried ? aiErr.tried.map(t => `${t.engine}: ${JSON.stringify(t.error)}`).join(' | ') : String(aiErr);
       return jsonResponse({ error: 'Gemini brain failed', diagnostic: diag }, 502);
     }
   } catch (e) { return jsonResponse({ error: 'Cloud build crashed', diagnostic: e.message }, 500); }
@@ -184,11 +212,11 @@ export async function onRequestPost(context) {
     const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0));
     body = JSON.parse(new TextDecoder().decode(bytes));
   }
-  const { engine, chain, dna, persona, messages, sysPrompt, prompt, model, localKey } = body;
+  const { engine, chain, dna, persona, messages, sysPrompt, prompt, localKey } = body;
   const composedSysPrompt = (sysPrompt || '') + (dna ? `\n\n[DNA]\n${dna}` : '') + (persona ? `\n\n[Persona]\n${persona}` : '');
   try {
     const chainToUse = Array.isArray(chain) ? ['gemini'] : [engine || 'gemini'];
-    const result = await callWithFallback(chainToUse, { messages, sysPrompt: composedSysPrompt, model, localKey }, context.env);
+    const result = await callWithFallback(chainToUse, { messages, sysPrompt: composedSysPrompt, localKey }, context.env);
     return jsonResponse(result);
   } catch (err) { return jsonResponse({ error: 'Gemini brain failed', details: err }, 502); }
 }
