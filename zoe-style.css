@@ -3263,46 +3263,19 @@ body:has(#usEditorModal.open) .character-launcher-fab {
 
 /* ---------- Deploy Button Refinement (v2.6.4) ---------- */
 #usEditorDeploy {
-  /* v2.8.9: The Global Interceptor — Maximum Visibility */
-  position: fixed !important;
-  top: 20px !important;
-  left: 20px !important;
-  right: 20px !important;
-  height: 80px !important;
-  background: #ff00ff !important; /* Pure Neon Purple for max contrast */
-  background: linear-gradient(135deg, #ff00ff, #6366f1) !important;
+  /* v2.9.1: Normal clean footer button, fully scrollable */
+  background: linear-gradient(135deg, #6366f1, #a855f7) !important;
   color: #fff !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  font-size: 24px !important;
-  font-weight: 900 !important;
-  border-radius: 20px !important;
-  border: 6px solid #fff !important;
-  box-shadow: 0 0 0 100vmax rgba(0,0,0,0.4), 0 0 60px rgba(255, 0, 255, 0.8) !important;
+  padding: 10px 20px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  border: none !important;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4) !important;
   cursor: pointer !important;
-  pointer-events: all !important;
-  z-index: 2147483647 !important;
-  text-transform: uppercase;
-  letter-spacing: 3px;
-  touch-action: none !important; /* Disable all system gestures on the button */
-}
-
-/* Touch-Target Expansion */
-#usEditorDeploy::after {
-  content: '';
-  position: absolute;
-  top: -20px;
-  bottom: -20px;
-  left: -20px;
-  right: -20px;
   pointer-events: auto !important;
-}
-
-#usEditorDeploy:active {
-  background: #fff !important;
-  color: #ff00ff !important;
-  transform: scale(0.98) !important;
+  z-index: 1001 !important;
+  display: inline-block;
 }
 #usEditorDeploy:active {
   transform: scale(0.92) !important;

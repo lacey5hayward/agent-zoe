@@ -83,18 +83,14 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     deployBtn.ontouchstart = triggerDeploy;
     deployBtn.ontouchend = triggerDeploy;
 
-    // v2.9.0: The Infinite Horizon — Touch ANYWHERE to deploy
-    const infiniteHorizon = (e) => {
-      if (E.mode !== 'preview' || !deployBtn || deployBtn.style.display === 'none') return;
-      if (deployBtn.disabled) return;
-      
-      console.log('[v2.9.0] Infinite Horizon triggered by:', e.type);
-      triggerDeploy(e);
+    // v2.9.1: Clean, normal touch binding (no global screen blocking)
+    deployBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toast('🚀 Deploying to GitHub...', 'success');
+      deployToGitHub();
     };
-    
-    // Attach to the highest level possible
-    document.documentElement.addEventListener('touchstart', infiniteHorizon, { passive: false, capture: true });
-    document.documentElement.addEventListener('click', infiniteHorizon, { capture: true });
+    deployBtn.ontouchstart = deployBtn.onclick;
   }
   if ($('#usEditorSkip')) $('#usEditorSkip').classList.remove('hidden');
   if ($('#usEditorReload')) $('#usEditorReload').classList.add('hidden');
