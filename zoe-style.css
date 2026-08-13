@@ -1603,20 +1603,7 @@ a:hover { text-decoration: underline; }
 /* 5a. Floating action button (FAB). Lives inside #usApp so it disappears
    when the user navigates away from the chat card. */
 .us-mem-fab {
-  position: absolute;
-  right: 14px;
-  bottom: 14px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--us-accent);
-  color: #fff;
-  font-size: 18px;
-  border: 0;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-  z-index: 5;
-  transition: transform 0.15s ease, background 0.15s ease;
+  display: none !important; /* v2.8.4: Floating FAB removed to prevent touch interference */
 }
 .us-mem-fab:hover { transform: scale(1.06); background: var(--us-accent-2); }
 .us-mem-fab:active { transform: scale(0.96); }
@@ -1899,12 +1886,14 @@ a:hover { text-decoration: underline; }
   z-index: 999;
 }
 
-/* v2.8.2: Hide FAB when Editor is open to remove any "transparent layers" */
-#usEditorModal.open ~ #character-launcher-fab,
-#usEditorModal.open + #character-launcher-fab,
-body:has(#usEditorModal.open) #character-launcher-fab {
-  opacity: 0;
-  pointer-events: none;
+/* v2.8.4: Total Clearance — Ensure no floating elements or invisible layers block the editor */
+#usEditorModal.open ~ *,
+#usEditorModal.open + *,
+body:has(#usEditorModal.open) .us-mem-fab,
+body:has(#usEditorModal.open) .character-launcher-fab {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
 }
 
 .character-launcher-fab:hover {

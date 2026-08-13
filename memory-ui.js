@@ -420,11 +420,18 @@
     }
     if (document.getElementById('usMemFab')) return; // idempotent
 
-    // FAB lives inside the chat card.
-    chatRoot.appendChild(buildFab());
+    // v2.8.4: Floating FAB removed as per Mom's request to prevent touch interference.
+    // chatRoot.appendChild(buildFab()); 
+    
     // Panel + backdrop live on body so they can overlay everything.
     document.body.appendChild(buildBackdrop());
     document.body.appendChild(buildPanel());
+
+    // Wire up sidebar button
+    const sidebarBtn = document.getElementById('sidebar-memory-btn');
+    if (sidebarBtn) {
+      sidebarBtn.addEventListener('click', () => togglePanel());
+    }
 
     // Per-AI-message 💾
     attachObserver();
