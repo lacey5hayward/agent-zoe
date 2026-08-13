@@ -1,5 +1,5 @@
-// Phase 5 + 6: Consolidated Zoe Builder & File Store (v2.4.5)
-// v2.4.5: Turbo Vision — Optimized for iPad speed with live status updates.
+// Phase 5 + 6: Consolidated Zoe Builder & File Store (v2.4.6)
+// v2.4.6: Turbo Bypass — 5s Proxy Timeout + Emergency Heartbeat + Direct Fallback.
 
 (() => {
   'use strict';
@@ -9,27 +9,11 @@
   const FILES_STORE = 'files';
 
   const SHIPPED_PATHS = [
-    'index.html',
-    'zoe-style.css',
-    'zoe-core.js',
-    'README.md',
-    'MERGE.md',
-    'functions/api/proxy/index.js',
-    'functions/api/proxy/status.js',
-    'auth.js',
-    'build-agent.js',
-    'files.js',
-    'editor.js',
-    'dna-profiles.js',
-    'clones.js',
-    'clone-state.js',
-    'clone-picker.js',
-    'personas.js',
-    'persona-picker.js',
-    'memory.js',
-    'memory-ui.js',
-    'character-launcher.js',
-    'security-key.js'
+    'index.html', 'zoe-style.css', 'zoe-core.js', 'README.md', 'MERGE.md',
+    'functions/api/proxy/index.js', 'functions/api/proxy/status.js', 'auth.js',
+    'build-agent.js', 'files.js', 'editor.js', 'dna-profiles.js', 'clones.js',
+    'clone-state.js', 'clone-picker.js', 'personas.js', 'persona-picker.js',
+    'memory.js', 'memory-ui.js', 'character-launcher.js', 'security-key.js'
   ];
 
   function openDb() {
@@ -38,15 +22,11 @@
         const req = indexedDB.open(DB_NAME, DB_VERSION);
         req.onupgradeneeded = () => {
           const db = req.result;
-          if (!db.objectStoreNames.contains(FILES_STORE)) {
-            db.createObjectStore(FILES_STORE);
-          }
+          if (!db.objectStoreNames.contains(FILES_STORE)) db.createObjectStore(FILES_STORE);
         };
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
-      } catch (e) {
-        reject(e);
-      }
+      } catch (e) { reject(e); }
     });
   }
 
@@ -112,11 +92,7 @@
     }
   };
 
-  // background seeding
-  setTimeout(() => {
-    window.UsFiles.seedFromNetwork().catch(() => {});
-  }, 1000);
-
+  setTimeout(() => { window.UsFiles.seedFromNetwork().catch(() => {}); }, 1000);
 
   // ==========================================
   // PART 2: US-BUILD (Build Agent)
@@ -125,14 +101,8 @@
   const POLLINATIONS = 'https://text.pollinations.ai/';
 
   const B = {
-    enabled: false,
-    busy: false,
-    postUser: null,
-    postAI: null,
-    setStatus: null,
-    toast: null,
-    addTyping: null,
-    removeTyping: null,
+    enabled: false, busy: false,
+    postUser: null, postAI: null, setStatus: null, toast: null, addTyping: null, removeTyping: null,
   };
 
   function chatBridge() {
@@ -158,44 +128,12 @@
     return 'zoe-core.js';
   }
 
-  function buildSystemPrompt(targetFile, targetContent, allFiles) {
-    const files = window.UsFiles;
-    const fileList = (files ? files.SHIPPED_PATHS : SHIPPED_PATHS).map(p => `- ${p}`).join('\n');
-    return `You are the build assistant inside Zoe, a single-page browser chatbot. You behave as a professional, autonomous general AI agent (Manus). The user issues natural-language build/edit requests that you translate into precise find-and-replace edits on their local copy of the project.
-
-Your voice (Manus):
-- Professional, academic, and structured.
-- Use complete paragraphs for any explanations.
-- Avoid emoji.
-- Be precise and technical.
-- Focus on efficient, well-crafted solutions.
-
-IMMUTABLE STRUCTURE (FAIL-SAFE):
-You are strictly forbidden from removing, hiding, or fundamentally dismantling the core layout. 
-- The Sidebar navigation (#nav) must always exist and be functional.
-- The Discord-like Chat Shell (#usApp, #usTopbar, #usMessages) must remain intact.
-- The Social Hub tab structure (Dashboard, Composer, Blaster Bay, Pages) is permanent.
-- You MAY change colors, themes, names, fonts, and internal card content.
-- You MAY add new pages or move existing ones within the main container.
-- NEVER delete the core structural containers.
-
-Available files:
-${fileList}
-
-Source of "${targetFile}":
-\`\`\`
-${targetContent}
-\`\`\`
-
-OUTPUT FORMAT:
-Return JSON ONLY.
-
-For a single edit:
-{ "plan": [ { "file": "${targetFile}", "find": "<exact substring>", "replace": "<new text>", "explanation": "<one short sentence>" } ] }
-
-HARD RULES:
-- "find" must appear EXACTLY ONCE.
-- Return ONLY JSON.`;
+  function buildSystemPrompt(targetFile, targetContent) {
+    return `You are Zoe's build assistant. NATURAL LANGUAGE TO CODE EDITS.
+Target: "${targetFile}"
+Content: \`\`\`\n${targetContent}\n\`\`\`
+OUTPUT JSON ONLY: { "plan": [ { "file": "${targetFile}", "find": "<exact>", "replace": "<new>", "explanation": "<msg>" } ] }
+HARD RULES: "find" must be unique. JSON only.`;
   }
 
   function tryParseJson(text) {
@@ -203,43 +141,42 @@ HARD RULES:
     let s = text.trim();
     const fenceMatch = s.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (fenceMatch) s = fenceMatch[1].trim();
-    const start = s.indexOf('{');
-    const end = s.lastIndexOf('}');
+    const start = s.indexOf('{'), end = s.lastIndexOf('}');
     if (start >= 0 && end > start) s = s.slice(start, end + 1);
-    try {
-      return JSON.parse(s);
-    } catch (_) {
-      return null;
-    }
+    try { return JSON.parse(s); } catch (_) { return null; }
   }
 
   async function callAI(messages) {
+    // Turbo Bypass: 5-second timeout for proxy
     try {
-      const rawBody = {
-        chain: ['openrouter', 'pollinations'],
-        messages: messages.slice(1),
-        sysPrompt: messages[0].content
-      };
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const rawBody = { chain: ['openrouter', 'pollinations'], messages: messages.slice(1), sysPrompt: messages[0].content };
       const stealthBtn = document.getElementById('usStealthBtn');
       const isStealth = stealthBtn && stealthBtn.dataset.active === 'true';
-      let payloadToSend = rawBody;
+      let payload = rawBody;
       if (isStealth) {
         const jsonStr = JSON.stringify(rawBody);
         const bytes = new TextEncoder().encode(jsonStr);
         const binString = Array.from(bytes, (byte) => String.fromCodePoint(byte)).join('');
-        payloadToSend = { stealthData: btoa(binString) };
+        payload = { stealthData: btoa(binString) };
       }
+      
       const res = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payloadToSend)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
         return data.text || '';
       }
-    } catch (e) {}
+    } catch (e) { console.warn('Proxy timed out or failed, bypassing to emergency brain...'); }
 
+    // Direct Fallback
     const res = await fetch(POLLINATIONS, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -252,7 +189,6 @@ HARD RULES:
   async function send(text) {
     if (B.busy) return;
     chatBridge();
-    
     const trimmed = String(text || '').trim();
     if (!trimmed) return;
 
@@ -262,11 +198,10 @@ HARD RULES:
 
     try {
       const targetFile = guessTargetFile(trimmed);
-      B.setStatus(`Zoe is reading ${targetFile}...`);
+      B.setStatus(`💓 Zoe is reading ${targetFile}...`);
       
       let targetContent = await window.UsFiles.read(targetFile);
       if (!targetContent) {
-        // Targeted fetch only for the file we need
         try {
           const res = await fetch(targetFile + '?v=' + Date.now());
           if (res.ok) {
@@ -278,43 +213,33 @@ HARD RULES:
 
       if (!targetContent) {
         B.removeTyping();
-        B.postAI(`I'm still opening my toolbox for "${targetFile}". Please try one more time in 2 seconds, Mom!`, 'Zoe');
-        B.busy = false;
-        return;
+        B.postAI(`I'm still opening my toolbox for "${targetFile}". Please try again in 2 seconds, Mom!`, 'Zoe');
+        B.busy = false; return;
       }
 
-      B.setStatus("Zoe is drafting the change...");
-      const system = buildSystemPrompt(targetFile, targetContent, SHIPPED_PATHS);
-      const reply = await callAI([
-        { role: 'system', content: system },
-        { role: 'user', content: trimmed }
-      ]);
+      B.setStatus("💓 Zoe is drafting the change...");
+      const system = buildSystemPrompt(targetFile, targetContent);
+      const reply = await callAI([{ role: 'system', content: system }, { role: 'user', content: trimmed }]);
       
       B.removeTyping();
       B.setStatus("Zoe is ready!");
 
       const parsed = tryParseJson(reply);
       if (!parsed) {
-        B.postAI("I couldn't quite draft that correctly. Can you try being more specific about what you want to change?", 'Build Agent');
+        B.postAI("I couldn't quite draft that correctly. Can you try again, Mom?", 'Build Agent');
         return;
       }
 
       if (Array.isArray(parsed.plan) && parsed.plan.length > 0) {
         postPlanIntro(parsed.plan);
         previewStep(0, parsed.plan, parsed.plan.slice(1));
-        return;
-      }
-
-      if (typeof parsed.answer === 'string') {
+      } else if (typeof parsed.answer === 'string') {
         B.postAI(parsed.answer, 'Build Agent');
-        return;
       }
     } catch (e) {
       B.removeTyping();
       B.postAI('Build agent error: ' + (e.message || e), 'Build Agent');
-    } finally {
-      B.busy = false;
-    }
+    } finally { B.busy = false; }
   }
 
   function postPlanIntro(plan) {
@@ -323,26 +248,15 @@ HARD RULES:
   }
 
   let _planQueue = null;
-  let _planList = null;
-
   function previewStep(idx, plan, remaining) {
-    _planList = plan;
     _planQueue = remaining;
     const step = plan[idx];
     if (!step) return;
-
     const editor = window.UsEditor;
     if (editor) {
-      editor.enterPreviewMode({
-        file: step.file,
-        find: step.find,
-        replace: step.replace,
-        explanation: step.explanation || '',
-        raw: step
-      });
+      editor.enterPreviewMode({ file: step.file, find: step.find, replace: step.replace, explanation: step.explanation || '', raw: step });
     } else {
       B.postAI('Error: Editor not loaded. Refreshing tools...', 'Build Agent');
-      // Attempt to re-bootstrap editor if it exists
       if (window.UsEditor && window.UsEditor.bootstrap) window.UsEditor.bootstrap();
     }
   }
@@ -387,10 +301,8 @@ HARD RULES:
         const input = document.getElementById('usInput');
         const text = input ? input.value.trim() : '';
         if (!text) return;
-        e.stopImmediatePropagation();
-        e.preventDefault();
-        input.value = '';
-        send(text);
+        e.stopImmediatePropagation(); e.preventDefault();
+        input.value = ''; send(text);
       }
     }, true);
   }
@@ -400,35 +312,21 @@ HARD RULES:
     installInterceptors();
     document.addEventListener('click', (e) => {
       if (e.target.closest && e.target.closest('#usBuildBtn')) {
-        e.stopImmediatePropagation();
-        toggle();
+        e.stopImmediatePropagation(); toggle();
       }
     }, true);
   }
 
   window.UsBuild = {
-    bootstrap,
-    send,
-    toggle,
-    enabled: () => B.enabled,
-    onPreviewApplied,
-    onPreviewSkipped,
-    updateBadge,
+    bootstrap, send, toggle, enabled: () => B.enabled,
+    onPreviewApplied, onPreviewSkipped, updateBadge,
     setBridge: (bridge) => {
-      B.postUser = bridge.postUser;
-      B.postAI = bridge.postAI;
-      B.setStatus = bridge.setStatus;
-      B.toast = bridge.toast;
-      B.addTyping = bridge.addTyping;
-      B.removeTyping = bridge.removeTyping;
+      B.postUser = bridge.postUser; B.postAI = bridge.postAI;
+      B.setStatus = bridge.setStatus; B.toast = bridge.toast;
+      B.addTyping = bridge.addTyping; B.removeTyping = bridge.removeTyping;
     }
   };
 
-  // Aggressive bootstrap
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bootstrap);
-  } else {
-    bootstrap();
-  }
-
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrap);
+  else bootstrap();
 })();
