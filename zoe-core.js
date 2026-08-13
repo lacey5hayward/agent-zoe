@@ -2464,6 +2464,14 @@ Rules:
     // Phase 13: OpenRouter universal key
     if ($('#usOpenrouterKey')) $('#usOpenrouterKey').value = (STATE.keys && STATE.keys.openrouter) || '';
     if ($('#usOpenrouterModel')) $('#usOpenrouterModel').value = STATE.openrouterModel || '';
+
+    // v2.9.2: Direct Key Drop Boxes
+    if ($('#usGeminiKey')) $('#usGeminiKey').value = (STATE.keys && STATE.keys.gemini) || '';
+    if ($('#usGroqKey')) $('#usGroqKey').value = (STATE.keys && STATE.keys.groq) || '';
+    if ($('#usDeepseekKey')) $('#usDeepseekKey').value = (STATE.keys && STATE.keys.deepseek) || '';
+    if ($('#usMistralKey')) $('#usMistralKey').value = (STATE.keys && STATE.keys.mistral) || '';
+    if ($('#usHuggingfaceKey')) $('#usHuggingfaceKey').value = (STATE.keys && STATE.keys.huggingface) || '';
+
     renderEngineStatuses();
     
     // Wire up the Test Brain button
@@ -2512,6 +2520,14 @@ Rules:
     // Phase 13: OpenRouter universal key — stored in localStorage (the user is opting in to a browser-side key)
     if ($('#usOpenrouterKey')) STATE.keys.openrouter = $('#usOpenrouterKey').value.trim();
     if ($('#usOpenrouterModel')) STATE.openrouterModel = $('#usOpenrouterModel').value.trim();
+
+    // v2.9.2: Direct Key Drop Boxes
+    if ($('#usGeminiKey')) STATE.keys.gemini = $('#usGeminiKey').value.trim();
+    if ($('#usGroqKey')) STATE.keys.groq = $('#usGroqKey').value.trim();
+    if ($('#usDeepseekKey')) STATE.keys.deepseek = $('#usDeepseekKey').value.trim();
+    if ($('#usMistralKey')) STATE.keys.mistral = $('#usMistralKey').value.trim();
+    if ($('#usHuggingfaceKey')) STATE.keys.huggingface = $('#usHuggingfaceKey').value.trim();
+
     saveState();
     toast('Settings saved', 'success');
     updateEngineStatus();
