@@ -1,6 +1,6 @@
 // ============================================================================
 // /api/proxy — Unified AI proxy (Phase 7: generic engine + 429 fallback)
-// v2.7.0: Midnight Final — Hydra Resilience & Keyless Freedom
+// v2.7.1: Grand Intelligence Awakening — Gemini Primary Brain
 // ============================================================================
 
 const GITHUB_OWNER = 'lacey5hayward';
@@ -167,8 +167,8 @@ async function handleBuildRequest(body, env) {
     const content = atob(fileData.content.replace(/\n/g, ''));
 
     const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${content}`;
-    const chain = ['openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'];
-    
+        // v2.7.1: Prioritize Gemini for robust building
+    const chain = ['gemini', 'openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'];
     try {
       const aiRes = await callWithFallback(chain, { messages: [{ role: 'user', content: instruction }], sysPrompt, localKey }, env);
       let text = aiRes.text;
