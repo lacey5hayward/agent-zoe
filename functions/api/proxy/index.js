@@ -1,6 +1,6 @@
 // ============================================================================
 // /api/proxy — Unified AI proxy (Phase 7: generic engine + 429 fallback)
-// v2.6.9: Master Key Alignment & Stable Free Models
+// v2.7.0: Midnight Final — Hydra Resilience & Keyless Freedom
 // ============================================================================
 
 const GITHUB_OWNER = 'lacey5hayward';
@@ -12,20 +12,22 @@ const OPENAI_COMPAT = {
   mistral: { id: 'mistral', url: 'https://api.mistral.ai/v1/chat/completions', model: 'mistral-small-latest', secret: 'MISTRAL_API_KEY', label: 'Mistral' },
   groq: { id: 'groq', url: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile', secret: 'GROQ_API_KEY', label: 'Groq' },
   deepseek: { id: 'deepseek', url: 'https://api.deepseek.com/v1/chat/completions', model: 'deepseek-chat', secret: 'DEEPSEEK_API_KEY', label: 'DeepSeek' },
-  pollinations: { id: 'pollinations', url: 'https://text.pollinations.ai/', model: 'openai', secret: null, label: 'Pollinations (keyless)' },
   kilo: { id: 'kilo', url: 'https://kilo.ai/api/openai/v1/chat/completions', model: 'auto:free', secret: null, label: 'Kilo (keyless)' },
   llm7: { id: 'llm7', url: 'https://api.llm7.io/v1/chat/completions', model: 'gpt-4o', secret: null, label: 'LLM7 (keyless)' },
   opencode: { id: 'opencode', url: 'https://opencode.ai/zen/v1/chat/completions', model: 'gpt-4o-mini', secret: null, label: 'OpenCode Zen (keyless)' },
   bazaarlink: { id: 'bazaarlink', url: 'https://bazaarlink.ai/api/v1/chat/completions', model: 'auto:free', secret: null, label: 'BazaarLink (keyless)' },
-  ovh: { id: 'ovh', url: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions', model: 'mixtral-8x7b-instruct-v0.1', secret: null, label: 'OVH AI (keyless)' },
   nvidia: { id: 'nvidia', url: 'https://integrate.api.nvidia.com/v1/chat/completions', model: 'meta/llama-3.1-70b-instruct', secret: null, label: 'NVIDIA NIM (keyless)' },
   openrouter: {
     id: 'openrouter',
     url: 'https://openrouter.ai/api/v1/chat/completions',
-    model: 'google/gemma-2-9b-it:free', // Switched to a more stable free model
+    model: 'google/gemma-2-9b-it:free',
     secret: 'OPENROUTER_API_KEY',
     label: 'OpenRouter',
-    fallbacks: ['mistralai/mistral-7b-instruct:free', 'meta-llama/llama-3.1-8b-instruct:free']
+    fallbacks: ['mistralai/mistral-7b-instruct:free', 'meta-llama/llama-3.1-8b-instruct:free'],
+    extraHeaders: () => ({
+      'HTTP-Referer': `https://${GITHUB_REPO}.pages.dev`,
+      'X-Title': 'Agent Zoe Social Hub'
+    })
   }
 };
 
@@ -39,19 +41,6 @@ const SPECIAL = {
       generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
     }),
     extractText: (data) => data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-  },
-  huggingface: {
-    id: 'huggingface', label: 'HuggingFace', secret: 'HUGGINGFACE_API_KEY',
-    url: () => 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
-    formatBody: ({ prompt }) => ({ inputs: prompt }),
-    extractImage: async (res) => {
-      const blob = await res.blob();
-      const buffer = await blob.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      let binary = '';
-      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-      return `data:image/png;base64,${btoa(binary)}`;
-    }
   }
 };
 
@@ -85,10 +74,23 @@ function jsonResponse(obj, status = 200) {
 async function callEngine(engineId, payload, env) {
   if (OPENAI_COMPAT[engineId]) {
     const cfg = OPENAI_COMPAT[engineId];
-    // v2.6.9: Support localKey and fallback to MEMORY secret
-    const key = payload.localKey || (cfg.secret ? (env[cfg.secret] || env['MEMORY']) : env['MEMORY']);
     const headers = { 'Content-Type': 'application/json' };
-    if (key) headers['Authorization'] = `Bearer ${key}`;
+    
+    // v2.7.0: Smart Key Selection
+    let key = payload.localKey || (cfg.secret ? (env[cfg.secret] || env['MEMORY']) : env['MEMORY']);
+    
+    // Only add Auth header if we actually have a key OR if the engine requires one
+    if (key && key !== 'null' && key !== 'undefined') {
+      headers['Authorization'] = `Bearer ${key}`;
+    } else if (cfg.secret) {
+      // If a secret is defined but we have no key, this engine will likely fail 401
+      // but we let it try anyway as some free models on OpenRouter don't need keys.
+    }
+
+    if (typeof cfg.extraHeaders === 'function') {
+      Object.assign(headers, cfg.extraHeaders(env));
+    }
+
     const url = cfg.url;
     const models = [payload.model || cfg.model, ...(cfg.fallbacks || [])];
     let lastErr = null;
@@ -110,9 +112,10 @@ async function callEngine(engineId, payload, env) {
     }
     throw lastErr;
   }
+  
   if (engineId === 'gemini') {
     const cfg = SPECIAL.gemini;
-    const key = payload.localKey || env[cfg.secret];
+    const key = payload.localKey || env[cfg.secret] || env['MEMORY'];
     if (!key) throw { kind: 'missing-key', engine: 'gemini' };
     const url = cfg.url({ model: payload.model }).replace('__KEY__', key);
     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg.formatBody(payload)) });
@@ -134,60 +137,38 @@ async function callWithFallback(chain, payload, env) {
       if (err.status === 429 || err.status === 402) memoRateLimit(engineId, err.status);
     }
   }
+  
+  // v2.7.0: Final "Panic" Fallback to Pollinations (Public GET API)
+  try {
+    const prompt = encodeURIComponent(`${payload.sysPrompt}\n\nUser Request: ${payload.messages[payload.messages.length-1].content}`);
+    const res = await fetch(`https://text.pollinations.ai/${prompt}?model=openai&json=true`);
+    if (res.ok) {
+      const data = await res.json();
+      return { engine: 'pollinations-direct', text: data.choices?.[0]?.text || data.text || '' };
+    }
+  } catch (e) {}
+
   const e = new Error('All engines failed');
   e.kind = 'all-failed';
   e.tried = tried;
   throw e;
 }
 
-// v2.6.9: Cloud Builder Logic with Master Key Alignment
 async function handleBuildRequest(body, env) {
   const { instruction, targetFile, localKey } = body;
   const token = env.GITHUB_TOKEN;
-  
-  if (!token) {
-    return jsonResponse({ 
-      error: 'GITHUB_TOKEN not set in Cloudflare',
-      diagnostic: 'Please add GITHUB_TOKEN to Cloudflare Pages → Settings → Environment Variables'
-    }, 500);
-  }
+  if (!token) return jsonResponse({ error: 'GITHUB_TOKEN not set', diagnostic: 'Add GITHUB_TOKEN to Cloudflare Settings' }, 500);
 
   try {
-    // 1. Fetch file from GitHub
     const getUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${targetFile}?ref=${GITHUB_BRANCH}`;
-    const getRes = await fetch(getUrl, { 
-      headers: { 
-        'Authorization': `token ${token}`, 
-        'User-Agent': 'Zoe-Cloud-Builder',
-        'Accept': 'application/vnd.github.v3+json'
-      } 
-    });
-
-    if (!getRes.ok) {
-      const errText = await getRes.text();
-      return jsonResponse({ 
-        error: `GitHub fetch failed (${getRes.status})`,
-        diagnostic: errText.slice(0, 200)
-      }, 502);
-    }
-
+    const getRes = await fetch(getUrl, { headers: { 'Authorization': `token ${token}`, 'User-Agent': 'Zoe-Cloud-Builder', 'Accept': 'application/vnd.github.v3+json' } });
+    if (!getRes.ok) return jsonResponse({ error: `GitHub fetch failed (${getRes.status})`, diagnostic: (await getRes.text()).slice(0, 200) }, 502);
     const fileData = await getRes.json();
     const content = atob(fileData.content.replace(/\n/g, ''));
 
-    // 2. Call AI to draft edit
-    const sysPrompt = `You are Zoe's Building Agent. You edit source code.
-Target File: ${targetFile}
-Content:
-${content}
-
-Respond ONLY with a JSON plan:
-{
-  "plan": [
-    { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" }
-  ]
-}`;
-
+    const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${content}`;
     const chain = ['openrouter', 'kilo', 'opencode', 'llm7', 'bazaarlink', 'nvidia'];
+    
     try {
       const aiRes = await callWithFallback(chain, { messages: [{ role: 'user', content: instruction }], sysPrompt, localKey }, env);
       let text = aiRes.text;
@@ -195,42 +176,23 @@ Respond ONLY with a JSON plan:
       if (start >= 0 && end > start) text = text.slice(start, end + 1);
       return jsonResponse(JSON.parse(text));
     } catch (aiErr) {
-      return jsonResponse({ 
-        error: 'All Cloud AI engines failed',
-        diagnostic: aiErr.tried ? aiErr.tried.map(t => `${t.engine}: ${t.error.status || t.error.kind}`).join(', ') : String(aiErr)
-      }, 502);
+      return jsonResponse({ error: 'All Cloud AI engines failed', diagnostic: aiErr.tried ? aiErr.tried.map(t => `${t.engine}: ${t.error.status || t.error.kind}`).join(', ') : String(aiErr) }, 502);
     }
-  } catch (e) {
-    return jsonResponse({ error: 'Cloud build crashed', diagnostic: e.message }, 500);
-  }
+  } catch (e) { return jsonResponse({ error: 'Cloud build crashed', diagnostic: e.message }, 500); }
 }
 
 export async function onRequestPost(context) {
   if (context.request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders() });
-  
   let body;
   try { body = await context.request.json(); } catch (e) { return jsonResponse({ error: 'Invalid JSON' }, 400); }
-
-  // v2.6.7: Route build requests to Cloud Builder
   if (body.type === 'build') return handleBuildRequest(body, context.env);
-
   if (body.stealthData) {
     const binString = atob(body.stealthData);
     const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0));
     body = JSON.parse(new TextDecoder().decode(bytes));
   }
-
-  const { engine, chain, dna, persona, messages, sysPrompt, prompt, style, ratio, model, localKey } = body;
+  const { engine, chain, dna, persona, messages, sysPrompt, prompt, model, localKey } = body;
   const composedSysPrompt = (sysPrompt || '') + (dna ? `\n\n[DNA]\n${dna}` : '') + (persona ? `\n\n[Persona]\n${persona}` : '');
-
-  if (engine === 'huggingface' || prompt) {
-    try {
-      const cfg = SPECIAL.huggingface;
-      const res = await fetch(cfg.url(), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${context.env[cfg.secret]}` }, body: JSON.stringify(cfg.formatBody({ prompt })) });
-      return jsonResponse({ engine: 'huggingface', type: 'image', url: await cfg.extractImage(res) });
-    } catch (e) { return jsonResponse({ error: e.message }, 502); }
-  }
-
   try {
     const chainToUse = Array.isArray(chain) ? chain : [engine || 'openrouter'];
     const result = await callWithFallback(chainToUse, { messages, sysPrompt: composedSysPrompt, model, localKey }, context.env);
