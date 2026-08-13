@@ -3203,3 +3203,34 @@ a:hover { text-decoration: underline; }
   0% { transform: scale(1); }
   100% { transform: scale(1.1); }
 }
+
+/* ---------- Zelda 20-Heart Status Bar (v2.4.9) ---------- */
+.zelda-hearts-stack {
+  display: none; /* Hidden by default */
+  flex-direction: column;
+  gap: 1px;
+  align-items: center;
+  margin-left: auto; /* Push to the right */
+  background: rgba(15, 23, 42, 0.8);
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.app.chat-active .zelda-hearts-stack {
+  display: inline-flex;
+}
+.zelda-hearts-row {
+  display: flex;
+  gap: 1px;
+}
+.zelda-heart {
+  font-size: 10px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.8));
+  animation: heartPulse 2s ease-in-out infinite alternate;
+}
+@keyframes heartPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1); }
+}
