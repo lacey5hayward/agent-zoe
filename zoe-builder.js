@@ -328,15 +328,21 @@ HARD RULES: "find" must be unique. JSON only.`;
 
   async function deploy(path, content, message) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      
       const url = window.location.origin + '/api/deploy';
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path, content, message })
+        body: JSON.stringify({ path, content, message }),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       return await res.json();
     } catch (e) {
-      return { success: false, error: e.message };
+      const msg = e.name === 'AbortError' ? 'Network Timeout (30s) - The library connection is too slow' : e.message;
+      return { success: false, error: msg };
     }
   }
 
