@@ -58,14 +58,21 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     <div class="us-editor-preview-label">With your edit:</div>
   `;
   
-  // v3.0.7: Instant Preview — Show the change as soon as it's drafted!
+  // v3.0.8: Robust Instant Preview — Fallback to DOM if local storage is stale
   const showInstantPreview = async () => {
-    const original = await FILES().read(file);
+    let original = await FILES().read(file);
+    // If we're editing index.html, the DOM is the most up-to-date source
+    if (file === 'index.html') {
+      original = document.documentElement.outerHTML;
+    }
+    
     const idx = original.indexOf(find);
     if (idx !== -1) {
       const updated = original.slice(0, idx) + replace + original.slice(idx + find.length);
       await applyLive(file, updated);
-      console.log('[v3.0.7] Instant preview applied for:', file);
+      console.log('[v3.0.8] Instant preview applied for:', file);
+    } else {
+      console.warn('[v3.0.8] Preview failed: Could not find marker in source.');
     }
   };
   showInstantPreview();
@@ -136,9 +143,19 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     };
     optimisticApply();
 
-    deployToGitHub().catch(err => {
+    deployToGitHub().then(res => {
+      if (res && res.success) {
+        // v3.0.8: Success Splash
+        toast('🎉 DEPLOYED TO GITHUB SUCCESSFULLY!', 'success');
+        const splash = document.createElement('div');
+        splash.style = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,255,0,0.2);display:flex;align-items:center;justify-content:center;z-index:99999;pointer-events:none;font-size:40px;color:#fff;text-shadow:0 0 20px #000;';
+        splash.innerHTML = '🚀 SUCCESS!';
+        document.body.appendChild(splash);
+        setTimeout(() => splash.remove(), 3000);
+      }
+    }).catch(err => {
       const errMsg = err.message || String(err);
-      console.error('[v3.0.5] DEPLOY ERROR:', errMsg);
+      console.error('[v3.0.8] DEPLOY ERROR:', errMsg);
       showDiag(errMsg); // SHOW ERROR OVER BUTTON
       
       [deployBtn, topbarBtn].forEach(b => {
