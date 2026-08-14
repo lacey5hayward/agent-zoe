@@ -58,21 +58,26 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     <div class="us-editor-preview-label">With your edit:</div>
   `;
   
-  // v3.0.8: Robust Instant Preview — Fallback to DOM if local storage is stale
+  // v3.0.9: The Guardian Return — Robust Instant Preview using stable markers
   const showInstantPreview = async () => {
     let original = await FILES().read(file);
-    // If we're editing index.html, the DOM is the most up-to-date source
     if (file === 'index.html') {
       original = document.documentElement.outerHTML;
     }
     
-    const idx = original.indexOf(find);
+    // Normalize search for the style tag marker
+    let search = find;
+    if (search.includes('<style id="us-live-css">')) {
+      search = '<style id="us-live-css"></style>';
+    }
+
+    const idx = original.indexOf(search);
     if (idx !== -1) {
-      const updated = original.slice(0, idx) + replace + original.slice(idx + find.length);
+      const updated = original.slice(0, idx) + replace + original.slice(idx + search.length);
       await applyLive(file, updated);
-      console.log('[v3.0.8] Instant preview applied for:', file);
+      console.log('[v3.0.9] Instant preview applied for:', file);
     } else {
-      console.warn('[v3.0.8] Preview failed: Could not find marker in source.');
+      console.warn('[v3.0.9] Preview failed: Could not find marker in source.');
     }
   };
   showInstantPreview();

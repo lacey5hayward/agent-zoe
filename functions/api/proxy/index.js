@@ -215,7 +215,7 @@ async function handleBuildRequest(body, env) {
       if (start >= 0 && end > start) text = text.slice(start, end + 1);
       return jsonResponse(JSON.parse(text));
     } catch (aiErr) {
-      // v3.0.7: Reinforced Guardian Angel — Finding the stable ZOE_BUILDER_MARKER
+      // v3.0.9: The Guardian Return — Using the stable style tag marker
       const t = instruction.toLowerCase();
       if (t.includes('button')) {
         let color = null;
@@ -225,14 +225,14 @@ async function handleBuildRequest(body, env) {
         
         if (color) {
           const shadow = color.match(/#([a-f0-9]{6})/gi)?.[0] || '#a855f7';
-          const newStyle = `/* ZOE_BUILDER_MARKER */\n    #usSendBtn {\n      background: ${color} !important;\n      box-shadow: 0 0 15px ${shadow}, 0 0 30px ${shadow} !important;\n      transition: all 0.3s ease !important;\n    }\n    #usSendBtn:hover { transform: scale(1.1); box-shadow: 0 0 25px ${shadow}, 0 0 50px ${shadow} !important; }`;
+          const newStyle = `<style id="us-live-css">\n    /* Neon button styling */\n    #usSendBtn {\n      background: ${color} !important;\n      box-shadow: 0 0 15px ${shadow}, 0 0 30px ${shadow} !important;\n      transition: all 0.3s ease !important;\n    }\n    #usSendBtn:hover { transform: scale(1.1); box-shadow: 0 0 25px ${shadow}, 0 0 50px ${shadow} !important; }\n  </style>`;
           
           return jsonResponse({
             plan: [{
               file: "index.html",
-              find: '/* ZOE_BUILDER_MARKER */',
+              find: '<style id="us-live-css"></style>',
               replace: newStyle,
-              explanation: `I've applied the ${t.includes('orange') ? 'orange' : 'neon'} styling to your send button, Mom! (Reinforced Fallback)`
+              explanation: `I've applied the ${t.includes('orange') ? 'orange' : 'neon'} styling to your send button, Mom! (Guardian Return)`
             }]
           });
         }
