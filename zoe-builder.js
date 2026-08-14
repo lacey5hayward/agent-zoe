@@ -200,11 +200,21 @@ HARD RULES: "find" must be unique. JSON only.`;
       const targetFile = guessTargetFile(trimmed);
       B.setStatus(`💓 Zoe is building in the cloud...`);
       
-      // v2.6.7: Cloud Builder Integration
-      // Instead of reading the file on the iPad, we send the instruction to the Worker.
-      // The Worker reads the file from GitHub and calls the AI itself.
-      // v2.6.9: Pass localKey from browser settings to Cloud Builder
-      const localKey = localStorage.getItem('us-openrouter-key') || localStorage.getItem('us-universal-key');
+      // v3.0.6: Empire Brain — Collecting all local keys as backup for the cloud
+      const localKeys = {
+        openrouter: localStorage.getItem('us-openrouter-key') || localStorage.getItem('us-universal-key'),
+        gemini: localStorage.getItem('us-gemini-key'),
+        groq: localStorage.getItem('us-groq-key'),
+        deepseek: localStorage.getItem('us-deepseek-key'),
+        mistral: localStorage.getItem('us-mistral-key'),
+        huggingface: localStorage.getItem('us-huggingface-key'),
+        cerebras: localStorage.getItem('us-cerebras-key'),
+        sambanova: localStorage.getItem('us-sambanova-key'),
+        cohere: localStorage.getItem('us-cohere-key'),
+        fireworks: localStorage.getItem('us-fireworks-key'),
+        together: localStorage.getItem('us-together-key'),
+        nvidia: localStorage.getItem('us-nvidia-key')
+      };
       
       // v2.7.8: Absolute URL & Retry logic for Safari "Load failed"
       const url = window.location.origin + '/api/proxy';
@@ -214,7 +224,7 @@ HARD RULES: "find" must be unique. JSON only.`;
           res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'build', instruction: trimmed, targetFile: targetFile, localKey: localKey })
+            body: JSON.stringify({ type: 'build', instruction: trimmed, targetFile: targetFile, localKeys: localKeys })
           });
           if (res.ok) break;
         } catch (e) {
