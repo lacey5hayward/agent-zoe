@@ -1,9 +1,9 @@
 // Phase 5: Files panel + in-app code editor.
 // v2.4.4: Fixed syntax errors and updated filenames for consolidated builder.
 
-const FILES = window.UsFiles;
-const LIVE_CSS = window.UsLiveCss;
-const LIVE_JS = window.UsLiveJs;
+const FILES = () => window.UsFiles || null;
+const LIVE_CSS = () => window.UsLiveCss || null;
+const LIVE_JS = () => window.UsLiveJs || null;
 const BUILD = () => window.UsBuild || null;
 
 const E = {
@@ -17,7 +17,7 @@ const E = {
 // ---------- Mode transitions ----------
 
 async function openFile(path) {
-  const text = await FILES.read(path);
+  const text = await FILES().read(path);
   enterViewMode(path, text);
 }
 
@@ -177,7 +177,7 @@ async function saveCurrent() {
   const path = E.currentPath;
   if (!path) return;
   const text = $('#usEditorTextarea').value;
-  await FILES.write(path, text);
+  await FILES().write(path, text);
   E.dirty = false;
   E.originalText = text;
   $('#usEditorSave').disabled = true;
@@ -196,7 +196,7 @@ async function revertCurrent() {
     const res = await fetch(path, { cache: 'no-cache' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
-    await FILES.write(path, text);
+    await FILES().write(path, text);
     E.originalText = text;
     $('#usEditorTextarea').value = text;
     E.dirty = false;
@@ -215,16 +215,16 @@ async function applyPreview() {
   if (E.mode !== 'preview' || !E.proposed) return;
   const { find, file } = E.proposed;
   const replace = $('#usEditorTextarea').value;
-  const content = await FILES.read(file);
+  const content = await FILES().read(file);
   const idx = content.indexOf(find);
   if (idx === -1) {
     toast('Find string no longer matches — opening file for manual edit', 'error');
-    const text = await FILES.read(file);
+    const text = await FILES().read(file);
     enterViewMode(file, text);
     return;
   }
   const updated = content.slice(0, idx) + replace + content.slice(idx + find.length);
-  await FILES.write(file, updated);
+  await FILES().write(file, updated);
   E.currentPath = file;
   E.originalText = updated;
   toast('Applied edit to ' + file, 'success');
@@ -244,7 +244,7 @@ async function deployToGitHub() {
   if (E.mode === 'preview' && E.proposed) {
     const { find } = E.proposed;
     const replace = $('#usEditorTextarea').value;
-    const original = await FILES.read(path);
+    const original = await FILES().read(path);
     const idx = original.indexOf(find);
     if (idx === -1) {
       toast('Cannot deploy: Find string no longer matches', 'error');
@@ -302,7 +302,7 @@ function skipPreview() {
 async function applyLive(path, content) {
   const name = path.split('/').pop();
   if (name === 'zoe-style.css') {
-    if (LIVE_CSS) LIVE_CSS.apply(content);
+    if (LIVE_CSS) LIVE_CSS().apply(content);
     toast('CSS applied (no reload needed)', 'success');
     return;
   }
@@ -312,7 +312,7 @@ async function applyLive(path, content) {
   }
   if (['zoe-builder.js', 'live-css.js', 'live-js.js', 'editor.js'].includes(name)) {
     try {
-      if (LIVE_JS) await LIVE_JS.rel('./' + name);
+      if (LIVE_JS) await LIVE_JS().rel('./' + name);
       toast(name + ' re-imported (live)', 'success');
       if (name === 'zoe-builder.js' && BUILD() && BUILD().onReimported) BUILD().onReimported();
       return;
@@ -341,9 +341,9 @@ function showReloadNeeded(msg) {
 
 async function renderFilesTab(rootEl) {
   if (!rootEl) return;
-  const files = FILES.SHIPPED_PATHS;
+  const files = FILES().SHIPPED_PATHS;
   const rows = await Promise.all(files.map(async (path) => {
-    const content = await FILES.read(path);
+    const content = await FILES().read(path);
     const lines = content === '' ? '—' : content.split('\n').length;
     const bytes = content === '' ? 0 : content.length;
     return `
@@ -379,8 +379,8 @@ async function snapshot() {
     return;
   }
   const zip = new JSZip();
-  for (const path of FILES.SHIPPED_PATHS) {
-    const text = await FILES.read(path);
+  for (const path of FILES().SHIPPED_PATHS) {
+    const text = await FILES().read(path);
     zip.file(path, text == null ? '' : text);
   }
   const blob = await zip.generateAsync({ type: 'blob' });
@@ -399,8 +399,8 @@ async function resetAll() {
   if (!confirm('Reset ALL files to the shipped versions? Local edits are lost.')) return;
   await FILES.resetAll();
   await FILES.seedFromNetwork();
-  const css = await FILES.read('zoe-style.css');
-  if (LIVE_CSS) LIVE_CSS.apply(css);
+  const css = await FILES().read('zoe-style.css');
+  if (LIVE_CSS) LIVE_CSS().apply(css);
   toast('All files reset to shipped versions', 'success');
   rerenderFilesTab();
 }
@@ -409,8 +409,8 @@ async function reseed() {
   if (!confirm('Re-fetch all files from the network and overwrite local edits?')) return;
   await FILES.resetAll();
   await FILES.seedFromNetwork();
-  const css = await FILES.read('zoe-style.css');
-  if (LIVE_CSS) LIVE_CSS.apply(css);
+  const css = await FILES().read('zoe-style.css');
+  if (LIVE_CSS) LIVE_CSS().apply(css);
   toast('Re-seeded from network', 'success');
   rerenderFilesTab();
 }
@@ -498,8 +498,8 @@ function bootstrap() {
       if (seeded.length > 0) {
         console.info('[Phase 5] Seeded', seeded.length, 'files into IndexedDB');
       }
-      FILES.read('zoe-style.css').then(css => {
-        if (css && LIVE_CSS) LIVE_CSS.apply(css);
+      FILES().read('zoe-style.css').then(css => {
+        if (css && LIVE_CSS) LIVE_CSS().apply(css);
       });
     });
   }
