@@ -3321,3 +3321,30 @@ body:has(#usEditorModal.open) .character-launcher-fab {
   box-shadow: 0 0 10px rgba(34, 197, 94, 0.4) !important;
   background-color: rgba(34, 197, 94, 0.05) !important;
 }
+
+/* v3.0.1: Live Diagnostic Overlay */
+.us-deploy-diagnostic {
+  position: fixed !important;
+  bottom: 110px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 90vw !important;
+  max-width: 500px !important;
+  background: rgba(220, 38, 38, 0.95) !important;
+  color: white !important;
+  padding: 12px !important;
+  border-radius: 8px !important;
+  font-family: monospace !important;
+  font-size: 12px !important;
+  z-index: 2147483647 !important;
+  border: 2px solid #fff !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+  pointer-events: none !important;
+  display: none;
+  word-break: break-all !important;
+  white-space: pre-wrap !important;
+}
+
+.us-deploy-diagnostic.active {
+  display: block !important;
+}

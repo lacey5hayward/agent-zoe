@@ -66,13 +66,33 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     // v2.8.5 Patch D: Physically move the button to the body to bypass any parent touch-blocking
     document.body.appendChild(deployBtn);
     
-    // v3.0.0: Milestone Milestone — Native Topbar & Diagnostic Logging
+    // v3.0.1: Live Diagnostic Overlay — Bringing errors to the surface
     const topbarBtn = $('#usTopbarDeploy');
+    
+    // Create diagnostic overlay if it doesn't exist
+    let diag = document.getElementById('usDeployDiag');
+    if (!diag) {
+      diag = document.createElement('div');
+      diag.id = 'usDeployDiag';
+      diag.className = 'us-deploy-diagnostic';
+      document.body.appendChild(diag);
+    }
+    
+    const showDiag = (msg) => {
+      diag.textContent = `❌ ERROR:\n${msg}\n\n[v3.0.1 Diagnostic]`;
+      diag.classList.add('active');
+      setTimeout(() => diag.classList.remove('active'), 15000); // Auto-hide after 15s
+    };
     
     const triggerDeploy = (e) => {
       const type = e ? e.type : 'manual';
-      console.log('[v3.0.0] DEPLOY SIGNAL:', type);
-      if (deployBtn.disabled) return;
+      console.log('[v3.0.1] DEPLOY SIGNAL:', type);
+      diag.classList.remove('active'); // Clear old errors
+      
+      if (deployBtn.disabled) {
+        showDiag("Button is DISABLED. Check if editor is ready.");
+        return;
+      }
       
       // Visual feedback on both buttons
       [deployBtn, topbarBtn].forEach(b => {
@@ -90,7 +110,10 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
       
       toast('🚀 Sending to GitHub...', 'success');
       deployToGitHub().catch(err => {
-        console.error('[v3.0.0] DEPLOY ERROR:', err);
+        const errMsg = err.message || String(err);
+        console.error('[v3.0.1] DEPLOY ERROR:', errMsg);
+        showDiag(errMsg); // SHOW ERROR OVER BUTTON
+        
         [deployBtn, topbarBtn].forEach(b => {
           if (b) {
             b.disabled = false;
