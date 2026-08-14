@@ -57,6 +57,18 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     <pre class="us-editor-find">${escapeHtml(find)}</pre>
     <div class="us-editor-preview-label">With your edit:</div>
   `;
+  
+  // v3.0.7: Instant Preview — Show the change as soon as it's drafted!
+  const showInstantPreview = async () => {
+    const original = await FILES().read(file);
+    const idx = original.indexOf(find);
+    if (idx !== -1) {
+      const updated = original.slice(0, idx) + replace + original.slice(idx + find.length);
+      await applyLive(file, updated);
+      console.log('[v3.0.7] Instant preview applied for:', file);
+    }
+  };
+  showInstantPreview();
   if ($('#usEditorSave')) $('#usEditorSave').classList.add('hidden');
   if ($('#usEditorRevert')) $('#usEditorRevert').classList.add('hidden');
   if ($('#usEditorApply')) $('#usEditorApply').classList.remove('hidden');
