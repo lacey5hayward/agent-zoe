@@ -215,16 +215,18 @@ async function handleBuildRequest(body, env) {
       if (start >= 0 && end > start) text = text.slice(start, end + 1);
       return jsonResponse(JSON.parse(text));
     } catch (aiErr) {
-      // v3.1.1: Guardian Angel Fallbacks for Color Tests
+      // v3.1.2: Guardian Angel Fallbacks — The Neon Rainbow Palette
       const t = instruction.toLowerCase();
       if (t.includes('button')) {
-        let color = null;
-        if (t.includes('purple')) color = 'linear-gradient(135deg, #a855f7 0%, #d946ef 100%)';
-        if (t.includes('orange')) color = 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)';
-        if (t.includes('green')) color = 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)';
+        let color = null, shadow = '#a855f7';
+        if (t.includes('red')) { color = 'linear-gradient(135deg, #ff0000 0%, #ff4d4d 100%)'; shadow = '#ff0000'; }
+        else if (t.includes('orange')) { color = 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)'; shadow = '#f97316'; }
+        else if (t.includes('yellow')) { color = 'linear-gradient(135deg, #facc15 0%, #fde047 100%)'; shadow = '#facc15'; }
+        else if (t.includes('green')) { color = 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)'; shadow = '#22c55e'; }
+        else if (t.includes('blue')) { color = 'linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)'; shadow = '#3b82f6'; }
+        else if (t.includes('purple')) { color = 'linear-gradient(135deg, #a855f7 0%, #d946ef 100%)'; shadow = '#a855f7'; }
         
         if (color) {
-          const shadow = color.match(/#([a-f0-9]{6})/gi)?.[0] || '#a855f7';
           return jsonResponse({
             plan: [{
               file: "index.html",
