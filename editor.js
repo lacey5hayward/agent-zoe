@@ -57,30 +57,6 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
     <pre class="us-editor-find">${escapeHtml(find)}</pre>
     <div class="us-editor-preview-label">With your edit:</div>
   `;
-  
-  // v3.0.9: The Guardian Return — Robust Instant Preview using stable markers
-  const showInstantPreview = async () => {
-    let original = await FILES().read(file);
-    if (file === 'index.html') {
-      original = document.documentElement.outerHTML;
-    }
-    
-    // Normalize search for the style tag marker
-    let search = find;
-    if (search.includes('<style id="us-live-css">')) {
-      search = '<style id="us-live-css"></style>';
-    }
-
-    const idx = original.indexOf(search);
-    if (idx !== -1) {
-      const updated = original.slice(0, idx) + replace + original.slice(idx + search.length);
-      await applyLive(file, updated);
-      console.log('[v3.0.9] Instant preview applied for:', file);
-    } else {
-      console.warn('[v3.0.9] Preview failed: Could not find marker in source.');
-    }
-  };
-  showInstantPreview();
   if ($('#usEditorSave')) $('#usEditorSave').classList.add('hidden');
   if ($('#usEditorRevert')) $('#usEditorRevert').classList.add('hidden');
   if ($('#usEditorApply')) $('#usEditorApply').classList.remove('hidden');
@@ -132,46 +108,21 @@ function enterPreviewMode({ file, find, replace, explanation, raw }) {
         e.stopPropagation();
       }
       
-    toast('🚀 Sending to GitHub...', 'success');
-    
-    // v3.0.5: Optimistic Apply — Show the change BEFORE the network finishes
-    const optimisticApply = async () => {
-      const path = E.currentPath;
-      const { find } = E.proposed;
-      const replace = $('#usEditorTextarea').value;
-      const original = await FILES().read(path);
-      const idx = original.indexOf(find);
-      if (idx !== -1) {
-        const updated = original.slice(0, idx) + replace + original.slice(idx + find.length);
-        await applyLive(path, updated);
-      }
-    };
-    optimisticApply();
-
-    deployToGitHub().then(res => {
-      if (res && res.success) {
-        // v3.0.8: Success Splash
-        toast('🎉 DEPLOYED TO GITHUB SUCCESSFULLY!', 'success');
-        const splash = document.createElement('div');
-        splash.style = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,255,0,0.2);display:flex;align-items:center;justify-content:center;z-index:99999;pointer-events:none;font-size:40px;color:#fff;text-shadow:0 0 20px #000;';
-        splash.innerHTML = '🚀 SUCCESS!';
-        document.body.appendChild(splash);
-        setTimeout(() => splash.remove(), 3000);
-      }
-    }).catch(err => {
-      const errMsg = err.message || String(err);
-      console.error('[v3.0.8] DEPLOY ERROR:', errMsg);
-      showDiag(errMsg); // SHOW ERROR OVER BUTTON
-      
-      [deployBtn, topbarBtn].forEach(b => {
-        if (b) {
-          b.disabled = false;
-          b.style.opacity = '1';
-          b.textContent = b === topbarBtn ? '🚀 DEPLOY NOW' : '🚀 DEPLOY TO GITHUB';
-        }
+      toast('🚀 Sending to GitHub...', 'success');
+      deployToGitHub().catch(err => {
+        const errMsg = err.message || String(err);
+        console.error('[v3.0.1] DEPLOY ERROR:', errMsg);
+        showDiag(errMsg); // SHOW ERROR OVER BUTTON
+        
+        [deployBtn, topbarBtn].forEach(b => {
+          if (b) {
+            b.disabled = false;
+            b.style.opacity = '1';
+            b.textContent = b === topbarBtn ? '🚀 DEPLOY NOW' : '🚀 DEPLOY TO GITHUB';
+          }
+        });
       });
-    });
-  };
+    };
     
     // Bind to the bottom button
     ['click', 'touchstart', 'touchend', 'mousedown'].forEach(evt => {
@@ -350,28 +301,13 @@ function skipPreview() {
 
 async function applyLive(path, content) {
   const name = path.split('/').pop();
-  
-  // v3.0.5: Instant Heartbeat — Apply CSS changes instantly even if they are in index.html
   if (name === 'zoe-style.css') {
-    if (LIVE_CSS()) LIVE_CSS().apply(content);
+    if (LIVE_CSS) LIVE_CSS().apply(content);
     toast('CSS applied (no reload needed)', 'success');
     return;
   }
-  
-  if (name === 'index.html') {
-    // If the edit is just a style update, apply it live!
-    const styleMatch = content.match(/<style id="us-live-css">([\s\S]*?)<\/style>/);
-    if (styleMatch && LIVE_CSS()) {
-      LIVE_CSS().apply(styleMatch[1]);
-      toast('Styles updated instantly!', 'success');
-    } else {
-      showReloadNeeded('Structure changed — reload to apply');
-    }
-    return;
-  }
-
-  if (name === 'zoe-core.js') {
-    showReloadNeeded('Logic changed — reload to apply');
+  if (name === 'zoe-core.js' || name === 'index.html') {
+    showReloadNeeded(name + ' changed — reload to apply');
     return;
   }
   if (['zoe-builder.js', 'live-css.js', 'live-js.js', 'editor.js'].includes(name)) {
