@@ -71,18 +71,27 @@ function jsonResponse(obj, status = 200) {
 }
 
 async function getSecret(keyName, env) {
-  if (env[keyName]) return env[keyName];
-  if (env.MEMORY) {
+  // 1. Direct environment variable (Secrets)
+  if (env && env[keyName]) return env[keyName];
+  
+  // 2. Memory/KV fallback (for user-provided keys)
+  if (env && env.MEMORY) {
     if (typeof env.MEMORY.get === 'function') {
       try {
         const val = await env.MEMORY.get(keyName);
         if (val) return val;
-        const mem = await env.MEMORY.get('MEMORY');
-        if (mem) return mem;
       } catch (e) {}
     }
-    if (typeof env.MEMORY === 'string') return env.MEMORY;
   }
+  
+  // 3. Last resort: Check if it's stored in a generic 'SECRETS' KV or string
+  if (env && env.SECRETS && typeof env.SECRETS.get === 'function') {
+    try {
+      const val = await env.SECRETS.get(keyName);
+      if (val) return val;
+    } catch (e) {}
+  }
+
   return null;
 }
 
