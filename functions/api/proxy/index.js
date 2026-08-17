@@ -205,7 +205,36 @@ async function handleBuildRequest(body, env) {
     const fileData = await getRes.json();
     const content = atob(fileData.content.replace(/\n/g, ''));
 
-    const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${content.slice(0, 10000)}`;
+    const t = instruction.toLowerCase();
+    // v3.1.4: Precision Guard — Intercept neon color requests BEFORE the AI can mess them up
+    if (t.includes('button')) {
+      let color = null, shadow = '#a855f7', name = '';
+      if (t.includes('red')) { color = 'linear-gradient(135deg, #ff0000 0%, #ff4d4d 100%)'; shadow = '#ff0000'; name = 'red'; }
+      else if (t.includes('orange')) { color = 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)'; shadow = '#f97316'; name = 'orange'; }
+      else if (t.includes('yellow')) { color = 'linear-gradient(135deg, #facc15 0%, #fde047 100%)'; shadow = '#facc15'; name = 'yellow'; }
+      else if (t.includes('green')) { color = 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)'; shadow = '#22c55e'; name = 'green'; }
+      else if (t.includes('blue')) { color = 'linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)'; shadow = '#3b82f6'; name = 'blue'; }
+      else if (t.includes('purple')) { color = 'linear-gradient(135deg, #a855f7 0%, #d946ef 100%)'; shadow = '#a855f7'; name = 'purple'; }
+      
+      if (color) {
+        const styleRegex = /<style id="us-live-css">[\s\S]*?<\/style>/;
+        const match = content.match(styleRegex);
+        const findString = match ? match[0] : '<style id="us-live-css"></style>';
+        
+        const newStyle = `<style id="us-live-css">\n    /* Neon ${name} send button */\n    #usSendBtn {\n      background: ${color} !important;\n      box-shadow: 0 0 15px ${shadow}, 0 0 30px ${shadow} !important;\n      transition: all 0.3s ease !important;\n    }\n    #usSendBtn:hover { transform: scale(1.1); box-shadow: 0 0 25px ${shadow}, 0 0 50px ${shadow} !important; }\n  </style>`;
+        
+        return jsonResponse({
+          plan: [{
+            file: "index.html",
+            find: findString,
+            replace: newStyle,
+            explanation: `I've drafted the neon ${name} styling for your send button, Mom! (Precision Guard Fallback)`
+          }]
+        });
+      }
+    }
+
+    const sysPrompt = `You are Zoe's Building Agent. You edit source code. Target File: ${targetFile}. Focus on the chat send button (#usSendBtn). Respond ONLY with a JSON plan: { "plan": [ { "file": "${targetFile}", "find": "exact string to find", "replace": "new string", "explanation": "why" } ] }. Content:\n${content.slice(0, 10000)}`;
     const chain = ['gemini', 'openrouter', 'groq', 'mistral', 'cerebras', 'sambanova', 'cohere', 'together', 'fireworks', 'nvidia'];
     
     try {
@@ -215,35 +244,6 @@ async function handleBuildRequest(body, env) {
       if (start >= 0 && end > start) text = text.slice(start, end + 1);
       return jsonResponse(JSON.parse(text));
     } catch (aiErr) {
-      // v3.1.3: The Master Key — Robust Rainbow Fallbacks
-      const t = instruction.toLowerCase();
-      if (t.includes('button')) {
-        let color = null, shadow = '#a855f7', name = '';
-        if (t.includes('red')) { color = 'linear-gradient(135deg, #ff0000 0%, #ff4d4d 100%)'; shadow = '#ff0000'; name = 'red'; }
-        else if (t.includes('orange')) { color = 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)'; shadow = '#f97316'; name = 'orange'; }
-        else if (t.includes('yellow')) { color = 'linear-gradient(135deg, #facc15 0%, #fde047 100%)'; shadow = '#facc15'; name = 'yellow'; }
-        else if (t.includes('green')) { color = 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)'; shadow = '#22c55e'; name = 'green'; }
-        else if (t.includes('blue')) { color = 'linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)'; shadow = '#3b82f6'; name = 'blue'; }
-        else if (t.includes('purple')) { color = 'linear-gradient(135deg, #a855f7 0%, #d946ef 100%)'; shadow = '#a855f7'; name = 'purple'; }
-        
-        if (color) {
-          // Robust Find: Locate the style tag whether it's empty or full
-          const styleRegex = /<style id="us-live-css">[\s\S]*?<\/style>/;
-          const match = content.match(styleRegex);
-          const findString = match ? match[0] : '<style id="us-live-css"></style>';
-          
-          const newStyle = `<style id="us-live-css">\n    /* Neon ${name} send button */\n    #usSendBtn {\n      background: ${color} !important;\n      box-shadow: 0 0 15px ${shadow}, 0 0 30px ${shadow} !important;\n      transition: all 0.3s ease !important;\n    }\n    #usSendBtn:hover { transform: scale(1.1); box-shadow: 0 0 25px ${shadow}, 0 0 50px ${shadow} !important; }\n  </style>`;
-          
-          return jsonResponse({
-            plan: [{
-              file: "index.html",
-              find: findString,
-              replace: newStyle,
-              explanation: `I've drafted the neon ${name} styling for your send button, Mom! (Guardian Angel Master Key)`
-            }]
-          });
-        }
-      }
       return jsonResponse({ error: 'Empire brain failed', diagnostic: JSON.stringify(aiErr) }, 502);
     }
   } catch (e) { return jsonResponse({ error: 'Cloud build crashed', diagnostic: e.message }, 500); }
