@@ -1,0 +1,8 @@
+{
+  "name": "agent-zoe",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:oauth": "node --test test/tumblr-oauth.test.mjs"
+  }
+}
