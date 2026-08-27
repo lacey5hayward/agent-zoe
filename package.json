@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:oauth": "node --test test/tumblr-oauth.test.mjs"
+    "test:oauth": "node --test test/tumblr-oauth.test.mjs",
+    "test:discord": "node --test test/discord-routes.test.mjs",
+    "test": "node --test test/*.test.mjs"
   }
 }
