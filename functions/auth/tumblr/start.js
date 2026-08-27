@@ -1,4 +1,4 @@
-import { createState, htmlResponse } from "../../../_shared/tumblr-oauth.js";
+import { createState, htmlResponse } from "../../_shared/tumblr-oauth.js";
 
 export async function onRequestGet(context) {
   const clientId = context.env.TUMBLR_CLIENT_ID;

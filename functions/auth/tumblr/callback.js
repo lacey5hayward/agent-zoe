@@ -1,4 +1,4 @@
-import { htmlResponse, parseCookies, verifyState } from "../../../_shared/tumblr-oauth.js";
+import { htmlResponse, parseCookies, verifyState } from "../../_shared/tumblr-oauth.js";
 
 async function exchangeCode(code, redirectUri, env) {
   const body = new URLSearchParams({
